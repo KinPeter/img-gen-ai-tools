@@ -1,0 +1,51 @@
+# Example input list for: node batch.mjs input.example
+# Each item shares its settings across a `prompts` list. Per-prompt
+# `tries`/`seed`/`prompt` override the parent; everything else is shared.
+- base-workflow: juggernaut-simple-base
+  output-folder: rover-city
+  filename-prefix: rover
+  steps: 2
+  cfg: 3.5
+  size:
+    width: 832
+    height: 1216
+  prompts:
+    - tries: 2
+      prompt:
+        - glossy, warm colors
+        - 1girl, rover, wuthering waves
+        - shoulder-length {black, blonde, red} hair, black dress,
+        - golden eyes, {red, blue, black} makeup
+        - sitting, facing the viewer
+        - smiling, pointing up
+        - city, sunshine, realistic
+
+    - seed: 1683944602
+      prompt:
+        - glossy, warm colors
+        - 1girl, rover, wuthering waves
+        - black hair, red dress, golden eyes
+        - standing, facing the viewer
+        - confident smile
+        - city, night, neon lights
+      negative-prompt:
+        - insects, spiders
+        - old houses
+
+- base-workflow: juggernaut-cyberpunk-neon-lora
+  output-folder: bp-cyberpunk
+  filename-prefix: bp-cp
+  steps: 1
+  cfg: 4.0
+  size:
+    width: 1216
+    height: 832
+  lora-strengths: [0.2, 1]
+  prompts:
+    - seed: random
+      prompt:
+        - photo of the Budapest Chain Bridge and Danube at night
+        - cyberpunk, neon signs in magenta and cyan, holographic advertisements
+        - volumetric laser beams through fog, wet reflective streets
+        - cinematic lighting, highly detailed
+        - sparks in the air

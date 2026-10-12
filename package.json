@@ -1,0 +1,21 @@
+{
+  "name": "img-gen-ai-tools",
+  "version": "1.0.0",
+  "description": "Image generation AI tools, CLI with scripts to invoke comfy-ui inference and manage RunPod Cloud GPUs",
+  "license": "ISC",
+  "author": "Peter Kin",
+  "type": "module",
+  "main": "batch.mjs",
+  "scripts": {
+    "batch": "node batch.mjs",
+    "convert-all": "node jobs/convert.mjs",
+    "find-log-from-files": "node jobs/find-log-from-files.mjs",
+    "start-pod": "node runpod/start-pod.mjs",
+    "stop-pod": "node runpod/stop-pod.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "sharp": "^0.35.5",
+    "yaml": "^2.9.1"
+  }
+}

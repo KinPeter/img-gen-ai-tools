@@ -1,0 +1,4 @@
+pod-images.mjs
+
+images/*.dockerfile
+!images/example.dockerfile
