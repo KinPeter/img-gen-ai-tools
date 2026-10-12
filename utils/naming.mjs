@@ -16,5 +16,7 @@ export function resolvePrefix(filenamePrefix) {
 }
 
 export function destFileName({ prefix, ts, index, ext }) {
-  return index === 0 ? `${prefix}_${ts}${ext}` : `${prefix}_${ts}_${index}${ext}`;
+  return index === 0
+    ? `${prefix}_${ts}${ext}`
+    : `${prefix}_${ts}_${index}${ext}`;
 }

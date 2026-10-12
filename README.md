@@ -114,3 +114,6 @@ See [RunPod README](./runpod/README.md)
 | `npm run batch -- <input-name>`          | run a batch (or `batch <input-name>` via `session.sh`) |
 | `npm run start-pod` / `npm run stop-pod` | pod up / down                                          |
 | `npm run convert-all`                    | re-convert all PNGs in `output/`                       |
+| `npm run lint`                           | check JavaScript with ESLint                           |
+| `npm run format`                         | format supported files with Prettier                   |
+| `npm run format:check`                   | verify Prettier formatting                             |

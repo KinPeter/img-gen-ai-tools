@@ -49,7 +49,11 @@ export async function findLogEntry({ logsDir, targetFilename }) {
     }
     const entries = Array.isArray(data) ? data : [data];
     for (const entry of entries) {
-      if (entry && typeof entry === "object" && entry.filename === targetFilename) {
+      if (
+        entry &&
+        typeof entry === "object" &&
+        entry.filename === targetFilename
+      ) {
         return { entry, sourceFile: file };
       }
     }

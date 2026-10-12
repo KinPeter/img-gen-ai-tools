@@ -5,7 +5,12 @@ import { resolveDestDir } from "../utils/paths.mjs";
 import { resolvePrefix, timestamp, destFileName } from "../utils/naming.mjs";
 import { collectOutputImages } from "../utils/outputs.mjs";
 
-export async function saveOutputs({ server, destBaseDir, input, historyEntry }) {
+export async function saveOutputs({
+  server,
+  destBaseDir,
+  input,
+  historyEntry,
+}) {
   const destDir = resolveDestDir(destBaseDir, input?.["output-folder"]);
   await mkdir(destDir, { recursive: true });
 

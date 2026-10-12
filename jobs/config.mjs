@@ -22,7 +22,8 @@ export async function loadConfig(env = process.env) {
     throw new Error("Missing COMFY_SERVER in .env and no active pod state");
   }
   const pollIntervalMs =
-    env.COMFY_POLL_INTERVAL_MS == null || String(env.COMFY_POLL_INTERVAL_MS).trim() === ""
+    env.COMFY_POLL_INTERVAL_MS == null ||
+    String(env.COMFY_POLL_INTERVAL_MS).trim() === ""
       ? DEFAULT_POLL_INTERVAL_MS
       : Number(env.COMFY_POLL_INTERVAL_MS);
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 1) {

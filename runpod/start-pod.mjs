@@ -5,7 +5,6 @@ import {
   getPod,
   waitForStatus,
   waitForComfyReady,
-  waitForDirectSsh,
 } from "./pods.mjs";
 import { readActivePod, writeActivePod } from "./state.mjs";
 import { POD_TEMPLATE_IMAGE, ALLOWED_CUDA_VERSIONS } from "./common.mjs";

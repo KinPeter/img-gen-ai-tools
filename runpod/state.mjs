@@ -2,14 +2,15 @@ import { readFile, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 export const ACTIVE_POD_PATH =
-  process.env.RUNPOD_STATE_PATH ?? path.join(import.meta.dirname, ".active-pod.json");
+  process.env.RUNPOD_STATE_PATH ??
+  path.join(import.meta.dirname, ".active-pod.json");
 
 export async function readActivePod() {
   try {
     return JSON.parse(await readFile(ACTIVE_POD_PATH, "utf8"));
   } catch (err) {
     if (err.code === "ENOENT") return null;
-    throw new Error(`Could not read pod state: ${err.message}`);
+    throw new Error(`Could not read pod state: ${err.message}`, { cause: err });
   }
 }
 

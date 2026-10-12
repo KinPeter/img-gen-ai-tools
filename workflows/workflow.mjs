@@ -30,7 +30,9 @@ export async function loadWorkflows(name) {
     });
   }
 
-  const items = expandPrompts(data == null ? [] : Array.isArray(data) ? data : [data]);
+  const items = expandPrompts(
+    data == null ? [] : Array.isArray(data) ? data : [data],
+  );
   const baseCache = new Map();
   const workflows = [];
 
@@ -74,16 +76,25 @@ function expandPrompts(items) {
   const expanded = [];
   for (const item of items) {
     if (!Array.isArray(item?.prompts)) {
-      throw new Error(`Each input item must have a "prompts" list: ${JSON.stringify(item)}`);
+      throw new Error(
+        `Each input item must have a "prompts" list: ${JSON.stringify(item)}`,
+      );
     }
     const { prompts, ...parent } = item;
     for (const entry of prompts) {
       const effective = { ...parent, ...(entry ?? {}) };
       if (effective.prompt != null && !Array.isArray(effective.prompt)) {
-        throw new Error(`"prompt" must be a list of strings: ${JSON.stringify(effective)}`);
+        throw new Error(
+          `"prompt" must be a list of strings: ${JSON.stringify(effective)}`,
+        );
       }
-      if (effective["negative-prompt"] != null && !Array.isArray(effective["negative-prompt"])) {
-        throw new Error(`"negative-prompt" must be a list of strings: ${JSON.stringify(effective)}`);
+      if (
+        effective["negative-prompt"] != null &&
+        !Array.isArray(effective["negative-prompt"])
+      ) {
+        throw new Error(
+          `"negative-prompt" must be a list of strings: ${JSON.stringify(effective)}`,
+        );
       }
       for (const variant of expandBraceVariants(effective)) {
         expanded.push(variant);
@@ -144,7 +155,11 @@ function expandBraceVariants(effective) {
       newPrompt[idx] = out;
     }
     const variant = { ...effective, prompt: newPrompt };
-    if (combos.length > 1 && variant.seed != null && variant.seed !== "random") {
+    if (
+      combos.length > 1 &&
+      variant.seed != null &&
+      variant.seed !== "random"
+    ) {
       delete variant.seed;
     }
     return variant;
@@ -241,7 +256,9 @@ function applyOverrides(workflow, item, forceRandomSeed) {
 
   const positiveClip = findPositiveClip(workflow, sampler);
   if (item?.prompt != null && positiveClip) {
-    const parts = item.prompt.map((v) => String(v ?? "").trim()).filter(Boolean);
+    const parts = item.prompt
+      .map((v) => String(v ?? "").trim())
+      .filter(Boolean);
     if (parts.length > 0) {
       const baseText = String(positiveClip.inputs.text ?? "").trim();
       positiveClip.inputs.text = baseText

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Node 24, ESM (`"type": "module"`, top-level await). No tests, lint, typecheck, or CI.
+Node 24, ESM (`"type": "module"`, top-level await). No tests, typecheck, or CI.
 
 ## Setup
 
@@ -19,6 +19,15 @@ source ./session.sh   # optional shortcuts: `batch <name>`, `start-pod`, `stop-p
 | `npm run batch -- <input-name>`          | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension) |
 | `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                    |
 | `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                   |
+
+## Required QA
+
+Every new development change must pass both checks before it is considered complete:
+
+```sh
+npm run lint
+npm run format:check
+```
 
 ## Config precedence
 
