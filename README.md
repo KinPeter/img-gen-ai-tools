@@ -39,6 +39,22 @@ comfy -p <pod-name> -i <input1>,<input2>,... # runs all the above in sequence
 - **yaml** — input file parsing (order-preserving)
 - **dotenv** — `.env` config (values are literal, no variable expansion)
 
+## Managed agentic delivery
+
+Use the project-local `/deliver` command in OpenCode or Claude Code to process
+a requirement through implementation, independent review, and review fixes:
+
+```text
+/deliver Add the requested behavior and cover it with tests
+/deliver .tmp/requirement-20261012T123456Z-abc123.md
+```
+
+The workflow leaves commits to you, runs the repository QA gates, and asks you
+to perform manual testing. Review and other generated artifacts are written to
+`.tmp/` with unique UTC-timestamped filenames. OpenCode definitions are in
+`.opencode/`, Claude Code mirrors are in `.claude/`, and both must be kept
+synchronized when agents, skills, commands, or workflow behavior changes.
+
 ## Batch usage
 
 ```sh

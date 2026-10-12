@@ -1,5 +1,21 @@
 # AGENTS.md
 
+## Managed agentic delivery
+
+Use `/deliver <inline requirement or path-to-requirements-file>` to run the
+managed workflow: implementation, independent read-only review, then review
+fixes. The orchestrator passes the exact review artifact path to the fixer and
+finishes with QA evidence, a manual-testing request, and a suggested commit
+message.
+
+- Do not commit, reset, checkout, stash, or discard user changes.
+- Every generated workflow artifact belongs under `.tmp/` and must include a
+  unique UTC timestamp with seconds in its filename; never use a fixed review
+  filename.
+- OpenCode definitions live under `.opencode/`; Claude Code mirrors live under
+  `.claude/`. Keep both trees synchronized whenever agents, skills, commands,
+  or workflow behavior changes. `CLAUDE.md` points back to this file.
+
 Node 24, ESM (`"type": "module"`, top-level await). No tests, typecheck, or CI.
 
 ## Setup

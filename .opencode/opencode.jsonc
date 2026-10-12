@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
+  "agents": {
+    "orchestrator": {
+      "description": "Coordinates implementation, review, and review-fix delivery stages",
+      "mode": "primary",
+      "permissions": [
+        { "action": "subagent", "resource": "implementer", "effect": "allow" },
+        { "action": "subagent", "resource": "reviewer", "effect": "allow" },
+        { "action": "subagent", "resource": "fixer", "effect": "allow" },
+      ],
+    },
+    "implementer": {
+      "description": "Implements a requirement or bug fix with tests and repository QA",
+      "mode": "subagent",
+    },
+    "reviewer": {
+      "description": "Reviews current changes and writes a timestamped review artifact",
+      "mode": "subagent",
+    },
+    "fixer": {
+      "description": "Fixes actionable review findings and reruns tests and QA",
+      "mode": "subagent",
+    },
+  },
+}
