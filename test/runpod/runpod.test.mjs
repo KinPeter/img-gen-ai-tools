@@ -119,4 +119,67 @@ describe("RunPod client", () => {
       );
     });
   });
+
+  it("handles empty responses, malformed errors, retries and exhausted GPUs", async () => {
+    let requests = 0;
+    server.use(
+      http.post("https://api.runpod.io/v2/pods", () => {
+        requests++;
+        if (requests === 1)
+          return HttpResponse.json(
+            { detail: "busy" },
+            { status: 429, headers: { "Retry-After": "0" } },
+          );
+        if (requests === 2) return HttpResponse.json({ id: "retried" });
+        return new HttpResponse("invalid-json", { status: 500 });
+      }),
+      http.post(
+        "https://api.runpod.io/v2/pods/empty/action",
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    await expect(
+      createPodWithFallback("key", [{ id: "one" }], () => ({ gpu: "one" }), {
+        attempts: 1,
+      }),
+    ).resolves.toMatchObject({ pod: { id: "retried" } });
+    await expect(podAction("key", "empty", "terminate")).resolves.toBeNull();
+    await expect(createPodWithFallback("key", [], () => ({}))).rejects.toThrow(
+      "No GPU candidates",
+    );
+    await expect(
+      createPodWithFallback("key", [{ id: "fail" }], () => ({}), {
+        attempts: 0,
+      }),
+    ).rejects.toMatchObject({ status: 500 });
+    expect(requests).toBe(3);
+  });
+
+  it("times out while polling status, SSH, and readiness and fails on dead pods", async () => {
+    server.use(
+      http.get("https://api.runpod.io/v2/pods/wait", () =>
+        HttpResponse.json({ status: "PENDING" }),
+      ),
+      http.get("http://comfy.test/system_stats", () =>
+        HttpResponse.json({ ok: true }),
+      ),
+    );
+    await expect(
+      waitForStatus("key", "wait", "RUNNING", { timeoutMs: -1 }),
+    ).rejects.toThrow("Timed out");
+    const { waitForDirectSsh } = await import("../../runpod/pods.mjs");
+    await expect(
+      waitForDirectSsh("key", "wait", { timeoutMs: -1 }),
+    ).rejects.toThrow("Timed out");
+    await expect(
+      waitForComfyReady("http://comfy.test", {
+        getStatus: async () => "EXITED",
+      }),
+    ).rejects.toThrow("EXITED");
+    await expect(
+      waitForComfyReady("http://comfy.test/", {
+        getStatus: async () => "RUNNING",
+      }),
+    ).resolves.toBeUndefined();
+  });
 });

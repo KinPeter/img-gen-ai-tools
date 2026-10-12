@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const m = vi.hoisted(() => ({
   active: null,
@@ -41,6 +41,23 @@ const { main: start } = await import("../../runpod/start-pod.mjs");
 const { main: stop } = await import("../../runpod/stop-pod.mjs");
 
 describe("RunPod command orchestration", () => {
+  afterEach(() => {
+    m.active = null;
+    vi.clearAllMocks();
+    m.listGpuTypes.mockResolvedValue([{ id: "gpu", name: "GPU", price: 1 }]);
+    m.createPodWithFallback.mockResolvedValue({
+      pod: { id: "p", name: "pod", ssh: {} },
+      gpu: { id: "gpu", name: "GPU", price: 1 },
+    });
+    m.waitForStatus.mockResolvedValue({
+      id: "p",
+      name: "pod",
+      status: "RUNNING",
+      gpu: { id: "gpu" },
+      ssh: {},
+    });
+    m.getPod.mockResolvedValue({ status: "RUNNING" });
+  });
   const withExit = async (fn, code = 1) => {
     const exit = vi.spyOn(process, "exit").mockImplementation((actual) => {
       throw new Error(`exit ${actual}`);
@@ -75,6 +92,36 @@ describe("RunPod command orchestration", () => {
     expect(m.writeActivePod).toHaveBeenCalled();
     if (previous == null) delete process.env.RUNPOD_API_KEY;
     else process.env.RUNPOD_API_KEY = previous;
+  });
+
+  it("records available SSH commands on a ready pod", async () => {
+    const previous = process.env.RUNPOD_API_KEY;
+    process.env.RUNPOD_API_KEY = "key";
+    try {
+      m.waitForStatus.mockResolvedValueOnce({
+        id: "p",
+        name: "pod",
+        status: "RUNNING",
+        gpu: { id: "gpu" },
+        ssh: {
+          proxy: { command: "proxy ssh" },
+          direct: { command: "direct ssh" },
+        },
+      });
+      await start();
+      expect(m.writeActivePod).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          ssh: { proxy: "proxy ssh", direct: "direct ssh" },
+        }),
+      );
+      expect(m.waitForComfyReady).toHaveBeenCalledWith(
+        "https://p-8188.proxy.runpod.net",
+        expect.objectContaining({ getStatus: expect.any(Function) }),
+      );
+    } finally {
+      if (previous == null) delete process.env.RUNPOD_API_KEY;
+      else process.env.RUNPOD_API_KEY = previous;
+    }
   });
 
   it("stops an active pod and clears its pointer", async () => {
@@ -121,6 +168,59 @@ describe("RunPod command orchestration", () => {
     m.getPod.mockRejectedValueOnce(new Error("network"));
     await withExit(() => stop());
     m.active = null;
+    if (previous == null) delete process.env.RUNPOD_API_KEY;
+    else process.env.RUNPOD_API_KEY = previous;
+  });
+
+  it("refuses duplicate pods and reports placement failures without writing state", async () => {
+    const previous = process.env.RUNPOD_API_KEY;
+    process.env.RUNPOD_API_KEY = "key";
+    try {
+      m.active = { id: "existing" };
+      await withExit(() => start());
+      expect(m.listGpuTypes).not.toHaveBeenCalled();
+      expect(m.createPodWithFallback).not.toHaveBeenCalled();
+      m.active = null;
+      for (const status of [422, 402, 500]) {
+        m.createPodWithFallback.mockRejectedValueOnce(
+          Object.assign(new Error("unavailable"), {
+            status,
+            data: { errors: "bad request" },
+          }),
+        );
+        await withExit(() => start());
+      }
+      expect(m.writeActivePod).not.toHaveBeenCalled();
+    } finally {
+      if (previous == null) delete process.env.RUNPOD_API_KEY;
+      else process.env.RUNPOD_API_KEY = previous;
+    }
+  });
+
+  it("keeps the pointer when startup polling or readiness fails", async () => {
+    const previous = process.env.RUNPOD_API_KEY;
+    process.env.RUNPOD_API_KEY = "key";
+    try {
+      m.waitForStatus.mockRejectedValueOnce(new Error("pod crashed"));
+      await withExit(() => start());
+      expect(m.writeActivePod).toHaveBeenCalledTimes(1);
+      m.waitForComfyReady.mockRejectedValueOnce(new Error("API unavailable"));
+      await withExit(() => start());
+      expect(m.writeActivePod).toHaveBeenCalledTimes(3);
+      expect(m.clearActivePod).not.toHaveBeenCalled();
+    } finally {
+      if (previous == null) delete process.env.RUNPOD_API_KEY;
+      else process.env.RUNPOD_API_KEY = previous;
+    }
+  });
+
+  it("handles missing API key and absent state without calling the cloud", async () => {
+    const previous = process.env.RUNPOD_API_KEY;
+    delete process.env.RUNPOD_API_KEY;
+    await withExit(() => stop());
+    process.env.RUNPOD_API_KEY = "key";
+    await withExit(() => stop(), 0);
+    expect(m.getPod).not.toHaveBeenCalled();
     if (previous == null) delete process.env.RUNPOD_API_KEY;
     else process.env.RUNPOD_API_KEY = previous;
   });

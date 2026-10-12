@@ -90,5 +90,27 @@ describe("output jobs", () => {
         distBaseDir: path.join(root, "dist"),
       }),
     ).resolves.toBeUndefined();
+    await expect(
+      convertAll({ outputDir: root, distDir: path.join(root, "jpg") }),
+    ).resolves.toEqual({ done: 1, total: 1 });
+    expect(
+      await readFile(path.join(root, "jpg", "nested", "ok.jpg")),
+    ).toBeTruthy();
+    await writeFile(path.join(root, "bad.png"), "not a png");
+    await expect(
+      convertAll({ outputDir: root, distDir: path.join(root, "jpg") }),
+    ).resolves.toEqual({ done: 1, total: 2 });
+    await expect(
+      convertOutputs(
+        [{ destDir: path.join(root, "nested"), filename: "ok.png" }],
+        {
+          outputBaseDir: root,
+          distBaseDir: path.join(root, "other-jpg"),
+        },
+      ),
+    ).resolves.toBeUndefined();
+    expect(
+      await readFile(path.join(root, "other-jpg", "nested", "ok.jpg")),
+    ).toBeTruthy();
   });
 });

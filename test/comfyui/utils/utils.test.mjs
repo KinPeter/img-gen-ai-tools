@@ -50,6 +50,12 @@ describe("utilities", () => {
     expect(exit).toHaveBeenCalledWith(1);
   });
 
+  it("returns a supplied input name without exiting", () => {
+    const exit = vi.spyOn(process, "exit");
+    expect(requireInputName(["node", "cmd", "valid"])).toBe("valid");
+    expect(exit).not.toHaveBeenCalled();
+  });
+
   it("prevents output-folder traversal", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "img-tools-"));
     dirs.push(root);
