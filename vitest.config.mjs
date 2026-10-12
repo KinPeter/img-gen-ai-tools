@@ -9,6 +9,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
+      include: ["comfyui/**/*.mjs", "runpod/**/*.mjs"],
+      thresholds: {
+        perFile: true,
+        lines: 90,
+      },
       exclude: [
         "**/node_modules/**",
         "**/test/**",

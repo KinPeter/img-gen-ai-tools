@@ -1,8 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { parseInputName } from "../../../comfyui/utils/args.mjs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  parseInputName,
+  requireInputName,
+} from "../../../comfyui/utils/args.mjs";
 import {
   destFileName,
   resolvePrefix,
@@ -13,7 +16,11 @@ import { collectOutputImages } from "../../../comfyui/utils/outputs.mjs";
 import {
   formatDuration,
   generationTimeMs,
+  buildLogEntry,
+  writeLog,
+  addToLog,
 } from "../../../comfyui/jobs/log.mjs";
+import { collectOutputImages as collectImages } from "../../../comfyui/utils/outputs.mjs";
 
 const dirs = [];
 afterEach(async () =>
@@ -28,6 +35,19 @@ describe("utilities", () => {
     expect(destFileName({ prefix: "x", ts: "1", index: 1, ext: ".png" })).toBe(
       "x_1_1.png",
     );
+    expect(resolvePrefix(" ")).toBe("output");
+    expect(destFileName({ prefix: "x", ts: "1", index: 0, ext: ".png" })).toBe(
+      "x_1.png",
+    );
+    expect(parseInputName(["node", "cmd"])).toBeNull();
+  });
+
+  it("reports missing CLI input", () => {
+    const exit = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error("exit");
+    });
+    expect(() => requireInputName(["node", "cmd"])).toThrow("exit");
+    expect(exit).toHaveBeenCalledWith(1);
   });
 
   it("prevents output-folder traversal", async () => {
@@ -54,5 +74,39 @@ describe("utilities", () => {
       }),
     ).toBe(2400);
     expect(formatDuration(125000)).toBe("2:05");
+    expect(collectImages()).toEqual([]);
+    expect(generationTimeMs({})).toBeNull();
+    expect(formatDuration(-1)).toBe("0:00");
+  });
+
+  it("builds and writes log entries", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "img-log-"));
+    dirs.push(root);
+    const entry = buildLogEntry({
+      input: { prompt: ["x"] },
+      finalSeed: 3,
+      finalPrompt: "base, x",
+      finalNegativePrompt: "bad",
+      filename: "x.png",
+      outputPath: root,
+      elapsedMs: null,
+      comfyJobId: "id",
+    });
+    expect(entry.generatedIn).toBeNull();
+    const log = path.join(root, "nested", "log.json");
+    await expect(writeLog(log, [entry])).resolves.toBeUndefined();
+    const workflow = {
+      KSampler: { class_type: "KSampler", inputs: { seed: 3 } },
+      PositiveCLIP_Base: { inputs: { text: "base" } },
+      NegativeCLIP_Base: { inputs: { text: "bad" } },
+    };
+    await addToLog({
+      logPath: log,
+      logEntries: [],
+      job: { input: {}, workflow },
+      saved: [{ filename: "x.png", destDir: root }],
+      promptId: "id",
+      historyEntry: {},
+    });
   });
 });

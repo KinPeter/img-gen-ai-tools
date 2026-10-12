@@ -1,11 +1,16 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../../support/server.mjs";
 import { saveOutputs } from "../../../comfyui/jobs/save.mjs";
-import { convertAll } from "../../../comfyui/jobs/convert.mjs";
+import {
+  convertAll,
+  collectPngFiles,
+  convertOutputs,
+  distPathFor,
+} from "../../../comfyui/jobs/convert.mjs";
 
 const png = await readFile(
   new URL("../../fixtures/images/tiny.png", import.meta.url),
@@ -63,5 +68,27 @@ describe("output jobs", () => {
     await expect(
       convertAll({ outputDir: path.join(root, "missing"), distDir: root }),
     ).rejects.toThrow();
+  });
+
+  it("collects nested PNGs and keeps conversion failures isolated", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "img-nested-"));
+    dirs.push(root);
+    await mkdir(path.join(root, "nested"), { recursive: true });
+    await writeFile(path.join(root, "nested", "ok.png"), png);
+    await writeFile(path.join(root, "nested", "skip.txt"), "x");
+    expect(await collectPngFiles(root)).toHaveLength(1);
+    expect(
+      distPathFor({
+        distBaseDir: root,
+        filename: "a.png",
+        relativeDir: "nested",
+      }),
+    ).toBe(path.join(root, "nested", "a.jpg"));
+    await expect(
+      convertOutputs([{ destDir: root, filename: "missing.png" }], {
+        outputBaseDir: root,
+        distBaseDir: path.join(root, "dist"),
+      }),
+    ).resolves.toBeUndefined();
   });
 });
