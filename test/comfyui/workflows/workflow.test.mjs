@@ -4,7 +4,7 @@ import {
   getFinalPositivePrompt,
   getFinalSeed,
   loadWorkflows,
-} from "../../workflows/workflow.mjs";
+} from "../../../comfyui/workflows/workflow.mjs";
 
 describe("workflow expansion", () => {
   it("expands alternatives and applies overrides", async () => {

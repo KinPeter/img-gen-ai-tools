@@ -17,6 +17,7 @@ export async function loadWorkflows(name) {
   const yamlPath = path.join(
     import.meta.dirname,
     "..",
+    "..",
     "inputs",
     `${name}.yaml`,
   );

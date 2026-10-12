@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server, comfyHandlers } from "../support/server.mjs";
+import { server, comfyHandlers } from "../../support/server.mjs";
 import {
   fetchImage,
   queuePrompt,
   waitForCompletion,
-} from "../../jobs/comfy.mjs";
+} from "../../../comfyui/jobs/comfy.mjs";
 
 const base = "http://comfy.test";
 describe("ComfyUI client", () => {

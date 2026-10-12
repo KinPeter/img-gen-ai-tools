@@ -24,12 +24,12 @@ npm install
 source ./session.sh    # or: . ./session.sh
 
 start-pod              # fire up a RunPod GPU pod (optional - skip for local)
-batch input.example    # run a batch
+comfy-batch input.example    # run a batch
 stop-pod               # stop + terminate the pod when done
 comfy -p <pod-name> -i <input1>,<input2>,... # runs all the above in sequence
 ```
 
-`batch.mjs` picks the ComfyUI URL from the active pod state file first (`runpod/.active-pod.json`, written by `start-pod`) and falls back to `COMFY_SERVER` from `.env`.
+`comfyui/batch.mjs` picks the ComfyUI URL from the active pod state file first (`runpod/.active-pod.json`, written by `start-pod`) and falls back to `COMFY_SERVER` from `.env`.
 
 ## Tools used
 
@@ -58,7 +58,7 @@ synchronized when agents, skills, commands, or workflow behavior changes.
 ## Batch usage
 
 ```sh
-batch <input-name>   # reads ./inputs/<input-name>.yaml
+comfy-batch <input-name>   # reads ./inputs/<input-name>.yaml
 ```
 
 ### Input YAML
@@ -66,7 +66,7 @@ batch <input-name>   # reads ./inputs/<input-name>.yaml
 A list of settings blocks. Each block shares its settings across a `prompts` list; per-prompt `tries`/`seed`/`prompt` override the parent:
 
 ```yaml
-- base-workflow: juggernaut-simple-base # workflows/<name>.json, required
+  - base-workflow: juggernaut-simple-base # comfyui/workflows/<name>.json, required
   output-folder: rover-city # subfolder of output/
   filename-prefix: rover
   steps: 20 # optional, base default otherwise
@@ -125,11 +125,11 @@ See [RunPod README](./runpod/README.md)
 
 ## npm scripts
 
-| Script                                   | Command                                                |
-| ---------------------------------------- | ------------------------------------------------------ |
-| `npm run batch -- <input-name>`          | run a batch (or `batch <input-name>` via `session.sh`) |
-| `npm run start-pod` / `npm run stop-pod` | pod up / down                                          |
-| `npm run convert-all`                    | re-convert all PNGs in `output/`                       |
-| `npm run lint`                           | check JavaScript with ESLint                           |
-| `npm run format`                         | format supported files with Prettier                   |
-| `npm run format:check`                   | verify Prettier formatting                             |
+| Script                                   | Command                                                      |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `npm run comfy-batch -- <input-name>`    | run a batch (or `comfy-batch <input-name>` via `session.sh`) |
+| `npm run start-pod` / `npm run stop-pod` | pod up / down                                                |
+| `npm run convert-all`                    | re-convert all PNGs in `output/`                             |
+| `npm run lint`                           | check JavaScript with ESLint                                 |
+| `npm run format`                         | format supported files with Prettier                         |
+| `npm run format:check`                   | verify Prettier formatting                                   |

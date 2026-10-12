@@ -9,8 +9,8 @@ import { convertOutputs } from "./jobs/convert.mjs";
 import { addToLog, writeLog } from "./jobs/log.mjs";
 import { timestamp } from "./utils/naming.mjs";
 
-const LOCAL_OUTPUT_PATH = path.join(import.meta.dirname, "output"); // ./output next to the script
-const LOCAL_DIST_PATH = path.join(import.meta.dirname, "dist"); // ./dist next to the script
+const LOCAL_OUTPUT_PATH = path.join(import.meta.dirname, "..", "output");
+const LOCAL_DIST_PATH = path.join(import.meta.dirname, "..", "dist");
 
 const config = await requireConfig();
 console.log(`ComfyUI server: ${config.server} (from ${config.serverSource})`);

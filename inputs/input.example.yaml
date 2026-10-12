@@ -1,4 +1,4 @@
-# Example input list for: node batch.mjs input.example
+# Example input list for: comfy-batch input.example
 # Each item shares its settings across a `prompts` list. Per-prompt
 # `tries`/`seed`/`prompt` override the parent; everything else is shared.
 - base-workflow: juggernaut-simple-base

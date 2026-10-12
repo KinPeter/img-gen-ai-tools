@@ -1,4 +1,4 @@
-import { readActivePod } from "../runpod/state.mjs";
+import { readActivePod } from "../../runpod/state.mjs";
 
 export const DEFAULT_POLL_INTERVAL_MS = 5000;
 

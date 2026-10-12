@@ -3,12 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "../support/server.mjs";
-import { saveOutputs } from "../../jobs/save.mjs";
-import { convertAll } from "../../jobs/convert.mjs";
+import { server } from "../../support/server.mjs";
+import { saveOutputs } from "../../../comfyui/jobs/save.mjs";
+import { convertAll } from "../../../comfyui/jobs/convert.mjs";
 
 const png = await readFile(
-  new URL("../fixtures/images/tiny.png", import.meta.url),
+  new URL("../../fixtures/images/tiny.png", import.meta.url),
 );
 const dirs = [];
 afterEach(async () =>

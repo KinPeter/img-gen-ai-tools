@@ -9,8 +9,8 @@ fi
 
 start-pod() { npm run start-pod -- "$@"; }
 stop-pod() { npm run stop-pod; }
-batch() { node batch.mjs "$@"; }
-flf() { node jobs/find-log-from-files.mjs "$@"; }
+comfy-batch() { node comfyui/batch.mjs "$@"; }
+flf() { node comfyui/jobs/find-log-from-files.mjs "$@"; }
 
 # Full run: start a pod, batch each input, always stop the pod.
 # Usage: comfy [-p <image-key>] -i <input1,input2,...>
@@ -52,7 +52,7 @@ comfy() {
     name="${name//[[:space:]]/}"
     [[ -z "$name" ]] && continue
     if (( interrupted )); then status=130; break; fi
-    if batch "$name"; then
+    if comfy-batch "$name"; then
       :
     else
       status=1
@@ -75,4 +75,4 @@ comfy() {
   return "$stop_status"
 }
 
-echo "Registered: start-pod, stop-pod, batch <input-name>, flf <filepath>, comfy [-p <image-key>] -i <input1,..>"
+echo "Registered: start-pod, stop-pod, comfy-batch <input-name>, flf <filepath>, comfy [-p <image-key>] -i <input1,..>"

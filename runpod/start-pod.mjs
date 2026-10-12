@@ -9,7 +9,7 @@ import {
 import { readActivePod, writeActivePod } from "./state.mjs";
 import { POD_TEMPLATE_IMAGE, ALLOWED_CUDA_VERSIONS } from "./common.mjs";
 import { POD_IMAGES } from "./pod-images.mjs";
-import { timestamp } from "../utils/naming.mjs";
+import { timestamp } from "../comfyui/utils/naming.mjs";
 
 const imageKey = process.argv[2];
 let image = POD_TEMPLATE_IMAGE;

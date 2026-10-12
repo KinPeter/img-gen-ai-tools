@@ -1,5 +1,5 @@
 dist/
 output/
 node_modules/
-workflows/*.json
+comfyui/workflows/*.json
 inputs/

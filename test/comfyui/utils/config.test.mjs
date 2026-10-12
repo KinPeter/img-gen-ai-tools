@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { withEnv } from "../support/env.mjs";
+import { withEnv } from "../../support/env.mjs";
 
 const state = { active: null };
-vi.mock("../../runpod/state.mjs", () => ({
+vi.mock("../../../runpod/state.mjs", () => ({
   readActivePod: vi.fn(async () => state.active),
 }));
-const { loadConfig } = await import("../../jobs/config.mjs");
+const { loadConfig } = await import("../../../comfyui/jobs/config.mjs");
 
 describe("configuration", () => {
   afterEach(() => {

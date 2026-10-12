@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const root = fileURLToPath(new URL("../../", import.meta.url));
+const root = fileURLToPath(new URL("../../../", import.meta.url));
 
 function runNode(script, env = {}) {
   return new Promise((resolve, reject) => {
@@ -23,7 +23,7 @@ function runNode(script, env = {}) {
 
 describe("CLI failure paths", () => {
   it("reports missing ComfyUI configuration and exits non-zero", async () => {
-    const result = await runNode("batch.mjs", {
+    const result = await runNode("comfyui/batch.mjs", {
       COMFY_SERVER: "",
       RUNPOD_STATE_PATH: "/tmp/img-gen-test-no-state.json",
     });

@@ -3,8 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
-const LOCAL_OUTPUT_PATH = path.join(import.meta.dirname, "..", "output");
-const LOCAL_DIST_PATH = path.join(import.meta.dirname, "..", "dist");
+const LOCAL_OUTPUT_PATH = path.join(import.meta.dirname, "..", "..", "output");
+const LOCAL_DIST_PATH = path.join(import.meta.dirname, "..", "..", "dist");
 
 export function distPathFor({ distBaseDir, filename, relativeDir = "" }) {
   return path.join(
@@ -90,7 +90,7 @@ const isMain =
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isMain) {
-  const root = path.join(import.meta.dirname, "..");
+  const root = path.join(import.meta.dirname, "..", "..");
   await convertAll({
     outputDir: path.join(root, "output"),
     distDir: path.join(root, "dist"),

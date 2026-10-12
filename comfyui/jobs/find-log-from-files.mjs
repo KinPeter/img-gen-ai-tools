@@ -82,7 +82,7 @@ async function lookupAndPrint(logsDir, rawInput) {
 }
 
 if (isMain) {
-  const logsDir = path.join(import.meta.dirname, "..", "output", "logs");
+  const logsDir = path.join(import.meta.dirname, "..", "..", "output", "logs");
   const first = process.argv[2];
   if (first) await lookupAndPrint(logsDir, first);
   const rl = createInterface({ input: process.stdin, output: process.stdout });
