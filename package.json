@@ -10,6 +10,9 @@
     "batch": "node batch.mjs",
     "convert-all": "node jobs/convert.mjs",
     "find-log-from-files": "node jobs/find-log-from-files.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -23,8 +26,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^5.0.4",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
-    "prettier": "^3.9.10"
+    "msw": "^3.0.3",
+    "prettier": "^3.9.10",
+    "vitest": "^5.0.4"
   }
 }

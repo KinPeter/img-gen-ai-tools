@@ -1,4 +1,5 @@
 const POLL_INTERVAL_MS = 5000;
+const POLL_TIMEOUT_MS = 15 * 60 * 1000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -27,11 +28,21 @@ export async function queuePrompt(server, workflow) {
 export async function waitForCompletion(
   server,
   promptId,
-  { pollIntervalMs = POLL_INTERVAL_MS } = {},
+  { pollIntervalMs = POLL_INTERVAL_MS, timeoutMs = POLL_TIMEOUT_MS } = {},
 ) {
+  const started = Date.now();
   while (true) {
     await sleep(pollIntervalMs);
-    const history = await (await fetch(`${server}/history/${promptId}`)).json();
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(`Timed out waiting for job ${promptId}`);
+    }
+    const response = await fetch(`${server}/history/${promptId}`);
+    if (!response.ok) {
+      throw new Error(
+        `Could not fetch history for ${promptId}: ${response.status} ${response.statusText}`,
+      );
+    }
+    const history = await response.json();
     const historyEntry = history[promptId];
     if (!historyEntry) continue; // still queued or running
     if (historyEntry.status?.status_str !== "success") {
