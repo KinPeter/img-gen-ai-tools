@@ -1,6 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "default_agent": "orchestrator",
   "agents": {
     "orchestrator": {
       "description": "Coordinates implementation, review, and review-fix delivery stages",

@@ -17,9 +17,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "start-pod": "node runpod/start-pod.mjs",
-    "stop-pod": "node runpod/stop-pod.mjs"
+    "stop-pod": "node runpod/stop-pod.mjs",
+    "deploy-find-lambda": "node logging/deploy-find-lambda.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1151.0",
+    "@aws-sdk/client-lambda": "^3.1151.0",
+    "@aws-sdk/lib-dynamodb": "^3.1151.0",
     "dotenv": "^18.0.5",
     "sharp": "^0.35.5",
     "yaml": "^2.9.1"
