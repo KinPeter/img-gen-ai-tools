@@ -55,7 +55,7 @@
         pointer-events: none;
       }
       main {
-        width: min(680px, calc(100% - 2rem));
+        width: min(980px, calc(100% - 2rem));
         margin-top: 12vh;
       }
       h1 {
@@ -72,6 +72,8 @@
       .controls {
         display: flex;
         gap: 0.5rem;
+        max-width: 680px;
+        margin-inline: auto;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: var(--radius);
@@ -140,8 +142,8 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 0.85rem;
         line-height: 1.5;
-        overflow-x: auto;
-        white-space: pre;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
       #result:empty {
         display: none;
