@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "start-pod": "node runpod/start-pod.mjs",
     "stop-pod": "node runpod/stop-pod.mjs",
+    "build-find-ui": "node logging/build-find-ui.mjs",
     "deploy-find-lambda": "node logging/deploy-find-lambda.mjs"
   },
   "dependencies": {

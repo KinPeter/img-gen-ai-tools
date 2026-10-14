@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Log Finder</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f6f8;
+        --panel: #ffffff;
+        --text: #1c2333;
+        --muted: #6b7280;
+        --accent: #2563eb;
+        --accent-hover: #1d4ed8;
+        --result-bg: #111827;
+        --result-text: #e5e7eb;
+        --border: #d1d5db;
+        --radius: 10px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        min-height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      body.dragging::after {
+        content: "Drop image to fill filename";
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--accent);
+        background: rgb(37 99 235 / 0.08);
+        border: 3px dashed var(--accent);
+        pointer-events: none;
+      }
+      main {
+        width: min(680px, calc(100% - 2rem));
+        margin-top: 12vh;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0 0 0.25rem;
+        text-align: center;
+      }
+      p.subtitle {
+        margin: 0 0 1.25rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .controls {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.75rem;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+      }
+      #filename {
+        flex: 1;
+        min-width: 0;
+        font-size: 1rem;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: inherit;
+        background: transparent;
+      }
+      #find {
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 0.6rem 1.25rem;
+        border: 0;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #find:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+      #find:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .file-row {
+        margin-top: 0.5rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      #browse {
+        background: none;
+        border: 0;
+        padding: 0;
+        font-size: inherit;
+        color: var(--accent);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      #status {
+        min-height: 1.5em;
+        margin: 0.75rem 0 0.5rem;
+        text-align: center;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+      #status.error {
+        color: #b91c1c;
+      }
+      #result {
+        margin: 0;
+        padding: 1rem 1.25rem;
+        border-radius: var(--radius);
+        background: var(--result-bg);
+        color: var(--result-text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      #result:empty {
+        display: none;
+      }
+      .tok-key {
+        color: #93c5fd;
+      }
+      .tok-str {
+        color: #86efac;
+      }
+      .tok-num {
+        color: #fbbf24;
+      }
+      .tok-bool {
+        color: #f472b6;
+      }
+      .tok-null {
+        color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Log Finder</h1>
+      <p class="subtitle">
+        Paste an image filename or path, or drop the image anywhere.
+      </p>
+      <div class="controls">
+        <input
+          id="filename"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="rover_20261003212855.png or full path…"
+        />
+        <button id="find" type="button">Find</button>
+      </div>
+      <div class="file-row">
+        or
+        <button id="browse" type="button">choose a file…</button>
+        <input id="file" type="file" hidden />
+      </div>
+      <p id="status" aria-live="polite"></p>
+      <pre id="result"></pre>
+    </main>
+    <script>
+      const LAMBDA_URL = "__LOG_FIND_LAMBDA_URL__";
+
+      const input = document.getElementById("filename");
+      const findButton = document.getElementById("find");
+      const fileInput = document.getElementById("file");
+      const browseButton = document.getElementById("browse");
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
+
+      function extractKey(raw) {
+        const trimmed = String(raw).trim();
+        if (trimmed === "") return "";
+        const base = trimmed.replace(/\\/g, "/").split("/").pop();
+        const dotIndex = base.lastIndexOf(".");
+        if (dotIndex > 0) return base.slice(0, dotIndex);
+        return base;
+      }
+
+      function isEmptyKey(raw, key) {
+        // extractKey(".png") already returns "", so `key === ""` alone
+        // covers the only-extension case (matching server normalizeFilename).
+        return key === "";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function highlightJson(escaped) {
+        return escaped.replace(
+          /(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false)\b|\b(null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+          (match, str, colon, bool, nil, num) => {
+            if (str !== undefined) {
+              if (colon !== undefined) {
+                return '<span class="tok-key">' + str + "</span>" + colon;
+              }
+              return '<span class="tok-str">' + str + "</span>";
+            }
+            if (bool !== undefined) {
+              return '<span class="tok-bool">' + bool + "</span>";
+            }
+            if (nil !== undefined) {
+              return '<span class="tok-null">' + nil + "</span>";
+            }
+            return '<span class="tok-num">' + num + "</span>";
+          },
+        );
+      }
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle("error", Boolean(isError));
+      }
+
+      function fillFromFileName(name) {
+        input.value = extractKey(name);
+        input.focus();
+      }
+
+      async function lookup() {
+        const key = extractKey(input.value);
+        if (isEmptyKey(input.value, key)) {
+          resultEl.textContent = "";
+          setStatus("Please enter a filename.", true);
+          return;
+        }
+        findButton.disabled = true;
+        setStatus("Searching…", false);
+        resultEl.textContent = "";
+        try {
+          const response = await fetch(
+            LAMBDA_URL + "?filename=" + encodeURIComponent(key),
+            { headers: { Accept: "application/json" } },
+          );
+          let data = null;
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
+          }
+          if (response.ok) {
+            if (data === null || data === undefined) {
+              setStatus("Request failed: invalid JSON response.", true);
+              return;
+            }
+            resultEl.innerHTML = highlightJson(
+              escapeHtml(JSON.stringify(data, null, 2)),
+            );
+            setStatus("", false);
+          } else {
+            const message =
+              data && data.error ? data.error : "unexpected response";
+            setStatus("Error " + response.status + ": " + message, true);
+          }
+        } catch (error) {
+          setStatus(
+            "Request failed: " +
+              (error && error.message ? error.message : String(error)),
+            true,
+          );
+        } finally {
+          findButton.disabled = false;
+        }
+      }
+
+      findButton.addEventListener("click", lookup);
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") lookup();
+      });
+
+      browseButton.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files[0]) {
+          fillFromFileName(fileInput.files[0].name);
+        }
+        fileInput.value = "";
+      });
+
+      document.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        document.body.classList.add("dragging");
+      });
+      document.addEventListener("dragleave", (event) => {
+        if (event.relatedTarget === null) {
+          document.body.classList.remove("dragging");
+        }
+      });
+      document.addEventListener("drop", (event) => {
+        event.preventDefault();
+        document.body.classList.remove("dragging");
+        const files = event.dataTransfer ? event.dataTransfer.files : null;
+        if (files && files[0]) {
+          fillFromFileName(files[0].name);
+        }
+      });
+    </script>
+  </body>
+</html>
