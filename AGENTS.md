@@ -30,15 +30,16 @@ source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `
 
 ## Commands
 
-| Command                                  | Notes                                                                  |
-| ---------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run comfy-batch -- <input-name>`    | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension)      |
-| `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                         |
-| `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                        |
-| `npm run find-log-from-files`            | Look up a run-log entry by image filename in `output/logs/`            |
-| `npm run deploy-find-lambda`             | Zip + publish `logging/log-find-lambda.mjs` to AWS Lambda              |
-| `npm run build-find-ui`                  | Inject `LOG_FIND_LAMBDA_URL` into browser UI → `logging/dist/`         |
-| `npm run test` / `npm run test:coverage` | Vitest run / run with per-file 90% line coverage (`vitest.config.mjs`) |
+| Command                                  | Notes                                                                                                                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run comfy-batch -- <input-name>`    | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension)                                                                                                                                                        |
+| `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                                                                                                                                                                           |
+| `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                                                                                                                                                                          |
+| `npm run find-log-from-files`            | Look up a run-log entry by image filename in `output/logs/`                                                                                                                                                              |
+| `npm run deploy-find-lambda`             | Zip + publish `logging/log-find-lambda.mjs` to AWS Lambda                                                                                                                                                                |
+| `npm run build-find-ui`                  | Inject `LOG_FIND_LAMBDA_URL` into browser UI → `logging/dist/`                                                                                                                                                           |
+| `npm run deploy-find-ui`                 | Build (`build-find-ui`) then upload `logging/dist/index.html` via plain FTP to `LOG_FIND_UI_FTP_FOLDER`, overwriting `index.html`; needs `FTP_HOST` (bare hostname) / `FTP_USER` / `FTP_PASS` / `LOG_FIND_UI_FTP_FOLDER` |
+| `npm run test` / `npm run test:coverage` | Vitest run / run with per-file 90% line coverage (`vitest.config.mjs`)                                                                                                                                                   |
 
 ## Required QA
 
@@ -88,4 +89,5 @@ Lifecycle is strictly linear, never restart/reuse: create → wait `RUNNING` →
 - `comfyui/jobs/find-log-from-files.mjs` (`npm run find-log-from-files`): local lookup of a run-log entry by image filename under `output/logs/`.
 - `logging/log-find-ui.html`: browser source UI (single file, `__LOG_FIND_LAMBDA_URL__` placeholder only — never the real URL).
 - `logging/build-find-ui.mjs` (`npm run build-find-ui`): injects `LOG_FIND_LAMBDA_URL` from `.env` into `logging/dist/index.html` (gitignored).
+- `logging/deploy-find-ui.mjs` (`npm run deploy-find-ui`): builds then uploads `logging/dist/index.html` via plain FTP (insecure, `basic-ftp` `secure: false` — provider cert is for `*.tarhely.com`, not the FTP hostname, so FTPS fails cert verification) to `LOG_FIND_UI_FTP_FOLDER`, overwriting `index.html`.
 - `logging/temp-scripts/` holds one-off migration helpers (own README); excluded from vitest coverage. Vitest covers `logging/**/*.mjs` otherwise (`vitest.config.mjs`, per-file 90% line threshold).

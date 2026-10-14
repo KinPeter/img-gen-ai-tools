@@ -19,12 +19,14 @@
     "start-pod": "node runpod/start-pod.mjs",
     "stop-pod": "node runpod/stop-pod.mjs",
     "build-find-ui": "node logging/build-find-ui.mjs",
-    "deploy-find-lambda": "node logging/deploy-find-lambda.mjs"
+    "deploy-find-lambda": "node logging/deploy-find-lambda.mjs",
+    "deploy-find-ui": "npm run build-find-ui && node logging/deploy-find-ui.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1151.0",
     "@aws-sdk/client-lambda": "^3.1151.0",
     "@aws-sdk/lib-dynamodb": "^3.1151.0",
+    "basic-ftp": "^6.2.3",
     "dotenv": "^18.0.5",
     "sharp": "^0.35.5",
     "yaml": "^2.9.1"
