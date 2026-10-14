@@ -9,7 +9,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["comfyui/**/*.mjs", "runpod/**/*.mjs"],
+      include: ["comfyui/**/*.mjs", "runpod/**/*.mjs", "logging/**/*.mjs"],
       thresholds: {
         perFile: true,
         lines: 90,
@@ -21,6 +21,7 @@ export default defineConfig({
         "**/dist/**",
         "**/.tmp/**",
         "**/workflows/*.json",
+        "**/logging/temp-scripts/**",
       ],
     },
   },

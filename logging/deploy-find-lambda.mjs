@@ -109,26 +109,29 @@ export async function deploy({ lambdaClient, functionName, zipBuffer }) {
   return { update, configuration };
 }
 
-const isMain =
-  process.argv[1] != null &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-
-if (isMain) {
+export async function main({
+  env = process.env,
+  zipLambdaFile = defaultPaths.lambdaFile,
+  createZip = createZipBuffer,
+  connect = createLambdaClient,
+  deployFn = deploy,
+} = {}) {
   let config;
   try {
-    config = requireEnv();
+    config = requireEnv(env);
   } catch (error) {
     console.error(error.message);
     process.exit(1);
+    return;
   }
 
   try {
-    const zipBuffer = await createZipBuffer();
+    const zipBuffer = await createZip(zipLambdaFile);
     console.log(
       `Deploying ${path.basename(defaultPaths.lambdaFile)} (${zipBuffer.length} bytes zipped) to "${config.functionName}" in ${config.region}...`,
     );
-    const lambdaClient = createLambdaClient(config);
-    const { update } = await deploy({
+    const lambdaClient = connect(config);
+    const { update } = await deployFn({
       lambdaClient,
       functionName: config.functionName,
       zipBuffer,
@@ -139,5 +142,14 @@ if (isMain) {
   } catch (error) {
     console.error(`Deploy failed: ${error.message}`);
     process.exit(1);
+    return;
   }
+}
+
+const isMain =
+  process.argv[1] != null &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isMain) {
+  await main();
 }
