@@ -123,6 +123,10 @@ Rules: `seed` is random unless set to a fixed number (a fixed seed is kept only 
 
 See [RunPod README](./runpod/README.md)
 
+## Log lookup (DynamoDB + Lambda)
+
+See [Logging README](./logging/README.md)
+
 ## npm scripts
 
 | Script                                   | Command                                                      |
@@ -130,6 +134,8 @@ See [RunPod README](./runpod/README.md)
 | `npm run comfy-batch -- <input-name>`    | run a batch (or `comfy-batch <input-name>` via `session.sh`) |
 | `npm run start-pod` / `npm run stop-pod` | pod up / down                                                |
 | `npm run convert-all`                    | re-convert all PNGs in `output/`                             |
+| `npm run find-log-from-files`            | look up a run-log entry by image filename in `output/logs/`  |
+| `npm run deploy-find-lambda`             | zip + publish `logging/log-find-lambda.mjs` to AWS Lambda    |
 | `npm run lint`                           | check JavaScript with ESLint                                 |
 | `npm run format`                         | format supported files with Prettier                         |
 | `npm run format:check`                   | verify Prettier formatting                                   |

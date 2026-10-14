@@ -16,7 +16,7 @@ message.
   `.claude/`. Keep both trees synchronized whenever agents, skills, commands,
   or workflow behavior changes. `CLAUDE.md` points back to this file.
 
-Node 24, ESM (`"type": "module"`, top-level await). No tests, typecheck, or CI.
+Node 24, ESM (`"type": "module"`, top-level await). Vitest (`vitest.config.mjs`, tests under `test/`); no typecheck or CI.
 
 ## Setup
 
@@ -30,11 +30,14 @@ source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `
 
 ## Commands
 
-| Command                                  | Notes                                                             |
-| ---------------------------------------- | ----------------------------------------------------------------- |
-| `npm run comfy-batch -- <input-name>`    | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension) |
-| `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                    |
-| `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                   |
+| Command                                  | Notes                                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run comfy-batch -- <input-name>`    | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension)      |
+| `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                         |
+| `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                        |
+| `npm run find-log-from-files`            | Look up a run-log entry by image filename in `output/logs/`            |
+| `npm run deploy-find-lambda`             | Zip + publish `logging/log-find-lambda.mjs` to AWS Lambda              |
+| `npm run test` / `npm run test:coverage` | Vitest run / run with per-file 90% line coverage (`vitest.config.mjs`) |
 
 ## Required QA
 
@@ -56,7 +59,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 - `comfyui/workflows/workflow.mjs`: YAML parsing + base-workflow overrides. Images fetched via `GET /view` only — never assumes server disk access.
 - `comfyui/jobs/comfy.mjs`: `POST /prompt`, poll `GET /history/{id}` until entry appears with `status_str === "success"`.
 - `comfyui/jobs/save.mjs` + `comfyui/utils/paths.mjs`: unsafe `output-folder` (path escape) is ignored with a warning, falls back to `output/`.
-- `comfyui/jobs/convert.mjs`: PNG → JPG quality 90 into flat `dist/` (subfolders not preserved).
+- `comfyui/jobs/convert.mjs`: PNG → JPG quality 90 into `dist/` (mirrors `output/` subfolders).
 - `comfyui/workflows/models.mjs`: per-`base-workflow` model + LoRA URL registry (`WORKFLOW_MODELS`).
 
 ## Input YAML (`inputs/`, gitignored except `input.example.yaml`)
@@ -70,9 +73,16 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 ## Outputs (all gitignored)
 
 - `output/<output-folder>/<prefix>_YYYYMMDDHHmmss.png` (`_<n>` suffix for multi-image jobs)
-- `dist/<prefix>_YYYYMMDDHHmmss.jpg` (flat)
+- `dist/<output-folder>/<prefix>_YYYYMMDDHHmmss.jpg` (mirrors `output/` subfolders)
 - `output/logs/<input>_<run-ts>.json`
 
 ## RunPod (`runpod/`)
 
 Lifecycle is strictly linear, never restart/reuse: create → wait `RUNNING` → work → `stop-pod` (stop, wait `EXITED`, terminate). `start-pod` refuses to run while `.active-pod.json` exists; `stop-pod` is safe to re-run (missing pod just clears the pointer). Pointer file is written immediately after create and deleted only after confirmed terminate — never delete it manually while a pod may be billable. Pod SSH details print at the end of `start-pod`;
+
+## Logging (`logging/`, see `logging/README.md`)
+
+- `logging/log-find-lambda.mjs`: AWS Lambda handler — `GET ?filename=<image-file>` looks up the run-log entry in DynamoDB (key: basename without extension). Needs `TABLE_NAME` (or `AWS_LOGS_TABLE_NAME`) on the Lambda.
+- `logging/deploy-find-lambda.mjs` (`npm run deploy-find-lambda`): zips + publishes the lambda via `UpdateFunctionCodeCommand` (needs the `zip` binary; env: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_LOGS_FIND_LAMBDA_NAME`). Handler stays `<basename>.handler`.
+- `comfyui/jobs/find-log-from-files.mjs` (`npm run find-log-from-files`): local lookup of a run-log entry by image filename under `output/logs/`.
+- `logging/temp-scripts/` holds one-off migration helpers (own README); excluded from vitest coverage. Vitest covers `logging/**/*.mjs` otherwise (`vitest.config.mjs`, per-file 90% line threshold).
