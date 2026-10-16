@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { uploadLog } from "../../logging/upload-log.mjs";
 import {
   getFinalSeed,
   getFinalPositivePrompt,
@@ -62,20 +63,28 @@ export async function addToLog({
   const finalSeed = getFinalSeed(job.workflow);
   const finalPrompt = getFinalPositivePrompt(job.workflow);
   const finalNegativePrompt = getFinalNegativePrompt(job.workflow);
+  const newEntries = [];
   for (const file of saved) {
-    logEntries.push(
-      buildLogEntry({
-        input: job.input,
-        finalSeed,
-        finalPrompt,
-        finalNegativePrompt,
-        filename: file.filename,
-        outputPath: file.destDir,
-        elapsedMs,
-        comfyJobId: promptId,
-      }),
-    );
+    const entry = buildLogEntry({
+      input: job.input,
+      finalSeed,
+      finalPrompt,
+      finalNegativePrompt,
+      filename: file.filename,
+      outputPath: file.destDir,
+      elapsedMs,
+      comfyJobId: promptId,
+    });
+    logEntries.push(entry);
+    newEntries.push(entry);
   }
   await writeLog(logPath, logEntries);
+  if (newEntries.length > 0) {
+    try {
+      await uploadLog(newEntries);
+    } catch (error) {
+      console.error(`Log upload failed: ${error?.message ?? error}`);
+    }
+  }
   return logEntries;
 }

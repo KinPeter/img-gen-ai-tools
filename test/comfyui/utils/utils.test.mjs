@@ -2,6 +2,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const uploadLogMock = vi.hoisted(() => ({ uploadLog: vi.fn() }));
+
+vi.mock("../../../logging/upload-log.mjs", () => uploadLogMock);
+
+uploadLogMock.uploadLog.mockResolvedValue({ uploaded: 1 });
+
 import {
   parseInputName,
   requireInputName,

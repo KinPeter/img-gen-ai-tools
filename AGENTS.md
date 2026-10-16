@@ -85,6 +85,7 @@ Lifecycle is strictly linear, never restart/reuse: create → wait `RUNNING` →
 ## Logging (`logging/`, see `logging/README.md`)
 
 - `logging/log-find-lambda.mjs`: AWS Lambda handler — `GET ?filename=<image-file>` looks up the run-log entry in DynamoDB (key: basename without extension). Needs `TABLE_NAME` (or `AWS_LOGS_TABLE_NAME`) on the Lambda.
+- `logging/upload-log.mjs`: exports `uploadLog(logEntries)` — uploads each entry to DynamoDB (key: basename without extension, `data`: JSON-stringified entry). Called by `addToLog` after every `writeLog`; failures only `console.error`. Needs `TABLE_NAME` (or `AWS_LOGS_TABLE_NAME`).
 - `logging/deploy-find-lambda.mjs` (`npm run deploy-find-lambda`): zips + publishes the lambda via `UpdateFunctionCodeCommand` (needs the `zip` binary; env: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_LOGS_FIND_LAMBDA_NAME`). Handler stays `<basename>.handler`.
 - `comfyui/jobs/find-log-from-files.mjs` (`npm run find-log-from-files`): local lookup of a run-log entry by image filename under `output/logs/`.
 - `logging/log-find-ui.html`: browser source UI (single file, `__LOG_FIND_LAMBDA_URL__` placeholder only — never the real URL).
