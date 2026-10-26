@@ -2,4 +2,4 @@ dist/
 output/
 node_modules/
 comfyui/workflows/*.json
-inputs/
+comfyui/inputs/

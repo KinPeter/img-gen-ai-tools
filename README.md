@@ -24,7 +24,7 @@ npm install
 source ./session.sh    # or: . ./session.sh
 
 start-pod              # fire up a RunPod GPU pod (optional - skip for local)
-comfy-batch input.example    # run a batch
+comfy-batch input.example    # run a batch from comfyui/inputs/input.example.yaml
 stop-pod               # stop + terminate the pod when done
 comfy -p <pod-name> -i <input1>,<input2>,... # runs all the above in sequence
 ```
@@ -58,8 +58,12 @@ synchronized when agents, skills, commands, or workflow behavior changes.
 ## Batch usage
 
 ```sh
-comfy-batch <input-name>   # reads ./inputs/<input-name>.yaml
+comfy-batch <input-name>   # reads comfyui/inputs/<input-name>.yaml
 ```
+
+Input YAML files live in `comfyui/inputs/`; the path is resolved from the
+project, not the current working directory. Files in subfolders (for example
+`comfyui/inputs/archive/`) are runnable as `comfy-batch archive/<name>`.
 
 ### Input YAML
 
@@ -99,7 +103,7 @@ Rules: `seed` is random unless set to a fixed number (a fixed seed is kept only 
 
 - `output/<output-folder>/<prefix>_YYYYMMDDHHmmss.png` (extra images in one job get `_<n>`)
 - `dist/<output-folder>/<prefix>_YYYYMMDDHHmmss.jpg` — converted, ready for upload
-- `output/logs/<input-name>_<run-timestamp>.json` — one file per run, entries appended live as images finish:
+- `output/logs/<input-name>_<run-timestamp>.json` — one file per run, entries appended live as images finish. Subfolder inputs keep their relative subfolder: `comfy-batch archive/<name>` writes `output/logs/archive/<name>_<run-timestamp>.json`:
 
 ```json
 {

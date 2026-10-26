@@ -2,10 +2,26 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parse } from "yaml";
 
-// Reads ./inputs/<name>.yaml and returns one { workflow, input } pair
-// per requested image. Base workflow JSON is loaded from the same
-// folder; scalar overrides (steps/cfg/seed/size/filename-prefix) are
-// applied only when set in the input. Prompt parts (a YAML list) are
+const PROJECT_ROOT = path.join(import.meta.dirname, "..", "..");
+const DEFAULT_INPUTS_DIR = path.join(PROJECT_ROOT, "comfyui", "inputs");
+
+function inputPath(name, inputsDir) {
+  return path.join(inputsDir, `${name}.yaml`);
+}
+
+// Project-relative label so messages stay cwd-independent and cannot drift
+// from the resolved inputs base (default: comfyui/inputs/<name>.yaml).
+function inputLabel(name, inputsDir) {
+  return path
+    .relative(PROJECT_ROOT, inputPath(name, inputsDir))
+    .split(path.sep)
+    .join("/");
+}
+
+// Reads comfyui/inputs/<name>.yaml and returns one { workflow, input }
+// pair per requested image. Base workflow JSON is loaded from the
+// workflows folder; scalar overrides (steps/cfg/seed/size/filename-prefix)
+// are applied only when set in the input. Prompt parts (a YAML list) are
 // appended to the base positive prompt in list order; negative-prompt
 // parts (a YAML list) are appended to the base negative prompt the
 // same way. Prompt strings support {a, b} alternation: each brace
@@ -13,22 +29,19 @@ import { parse } from "yaml";
 // option, cartesian-producted across all groups in the entry's
 // `prompt` list (negative-prompt is left literal). lora-strengths (a YAML list) sets each LoraLoader node's
 // strength_model in workflow order; omitted keeps base values.
-export async function loadWorkflows(name) {
-  const yamlPath = path.join(
-    import.meta.dirname,
-    "..",
-    "..",
-    "inputs",
-    `${name}.yaml`,
-  );
+export async function loadWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
+  const yamlPath = inputPath(name, inputsDir);
   const text = await readFile(yamlPath, "utf8");
   let data;
   try {
     data = parse(text);
   } catch (err) {
-    throw new Error(`Invalid YAML in inputs/${name}.yaml: ${err.message}`, {
-      cause: err,
-    });
+    throw new Error(
+      `Invalid YAML in ${inputLabel(name, inputsDir)}: ${err.message}`,
+      {
+        cause: err,
+      },
+    );
   }
 
   const items = expandPrompts(
@@ -167,17 +180,21 @@ function expandBraceVariants(effective) {
   });
 }
 
-export async function requireWorkflows(name) {
+export async function requireWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
   let workflows;
   try {
-    workflows = await loadWorkflows(name);
+    workflows = await loadWorkflows(name, inputsDir);
   } catch (err) {
-    console.error(`Could not load ./inputs/${name}.yaml: ${err.message}`);
+    console.error(
+      `Could not load ${inputLabel(name, inputsDir)}: ${err.message}`,
+    );
     process.exit(1);
   }
 
   if (workflows.length === 0) {
-    console.warn(`No workflows found in ./inputs/${name}.yaml, nothing to do.`);
+    console.warn(
+      `No workflows found in ${inputLabel(name, inputsDir)}, nothing to do.`,
+    );
     process.exit(0);
   }
 

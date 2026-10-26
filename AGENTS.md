@@ -32,7 +32,7 @@ source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `
 
 | Command                                  | Notes                                                                                                                                                                                                                    |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run comfy-batch -- <input-name>`    | Reads `./inputs/<input-name>.yaml` (bare name, no path/extension)                                                                                                                                                        |
+| `npm run comfy-batch -- <input-name>`    | Reads `comfyui/inputs/<input-name>.yaml` (bare name, no path/extension)                                                                                                                                                  |
 | `npm run start-pod` / `npm run stop-pod` | RunPod GPU pod up/down; needs `RUNPOD_API_KEY`                                                                                                                                                                           |
 | `npm run convert-all`                    | Re-convert every PNG under `output/` to `dist/`                                                                                                                                                                          |
 | `npm run find-log-from-files`            | Look up a run-log entry by image filename in `output/logs/`                                                                                                                                                              |
@@ -56,7 +56,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 
 ## Pipeline (`comfyui/batch.mjs` is thin orchestrator only)
 
-`requireConfig -> requireInputName -> requireWorkflows ->` per job `queuePrompt -> waitForCompletion -> saveOutputs -> addToLog -> convertOutputs`. Failure in any job logs and `process.exit(1)`; log file `output/logs/<input>_<run-ts>.json` is created empty up front and appended live.
+`requireConfig -> requireInputName -> requireWorkflows ->` per job `queuePrompt -> waitForCompletion -> saveOutputs -> addToLog -> convertOutputs`. Failure in any job logs and `process.exit(1)`; log file `output/logs/<input>_<run-ts>.json` is created empty up front and appended live (subfolder inputs keep their relative subfolder, e.g. `output/logs/archive/<input>_<run-ts>.json`).
 
 - `comfyui/workflows/workflow.mjs`: YAML parsing + base-workflow overrides. Images fetched via `GET /view` only — never assumes server disk access.
 - `comfyui/jobs/comfy.mjs`: `POST /prompt`, poll `GET /history/{id}` until entry appears with `status_str === "success"`.
@@ -64,7 +64,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 - `comfyui/jobs/convert.mjs`: PNG → JPG quality 90 into `dist/` (mirrors `output/` subfolders).
 - `comfyui/workflows/models.mjs`: per-`base-workflow` model + LoRA URL registry (`WORKFLOW_MODELS`).
 
-## Input YAML (`inputs/`, gitignored except `input.example.yaml`)
+## Input YAML (`comfyui/inputs/`, gitignored except `input.example.yaml`)
 
 - Top-level list of blocks; every block **must** have a `prompts` list. Each entry merges over its parent — per-prompt `tries`/`seed`/`prompt` win.
 - `base-workflow: <name>` loads `comfyui/workflows/<name>.json` (`.json` suffix optional). `steps`/`cfg`/`size`/`filename-prefix` applied only when set.
@@ -76,7 +76,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 
 - `output/<output-folder>/<prefix>_YYYYMMDDHHmmss.png` (`_<n>` suffix for multi-image jobs)
 - `dist/<output-folder>/<prefix>_YYYYMMDDHHmmss.jpg` (mirrors `output/` subfolders)
-- `output/logs/<input>_<run-ts>.json`
+- `output/logs/<input>_<run-ts>.json` (subfolder inputs keep their relative subfolder, e.g. `output/logs/archive/<input>_<run-ts>.json`)
 
 ## RunPod (`runpod/`)
 

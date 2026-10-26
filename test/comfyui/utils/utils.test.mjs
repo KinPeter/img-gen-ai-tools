@@ -50,10 +50,14 @@ describe("utilities", () => {
   });
 
   it("reports missing CLI input", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const exit = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("exit");
     });
     expect(() => requireInputName(["node", "cmd"])).toThrow("exit");
+    expect(error).toHaveBeenCalledWith(
+      "  Reads comfyui/inputs/<input-name>.yaml",
+    );
     expect(exit).toHaveBeenCalledWith(1);
   });
 

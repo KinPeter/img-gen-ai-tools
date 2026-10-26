@@ -63,6 +63,6 @@ Desktop.ini
 # Project-specific
 output/
 .tmp/
-inputs/*
-!inputs/input.example.yaml
+comfyui/inputs/*
+!comfyui/inputs/input.example.yaml
 runpod/.active-pod.json
