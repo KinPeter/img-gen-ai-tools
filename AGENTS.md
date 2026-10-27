@@ -23,7 +23,7 @@ Node 24, ESM (`"type": "module"`, top-level await). Vitest (`vitest.config.mjs`,
 ```sh
 cp .env.example .env  # then fill in values
 npm install
-source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `stop-pod`, `models <name>`
+source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `stop-pod`, `runpod-comfy`, `comfy`
 ```
 
 `dotenv` values are literal (no variable expansion). `package-lock.json` is tracked — commit updates alongside dependency changes.

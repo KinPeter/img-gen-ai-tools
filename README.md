@@ -26,7 +26,8 @@ source ./session.sh    # or: . ./session.sh
 start-pod              # fire up a RunPod GPU pod (optional - skip for local)
 comfy-batch input.example    # run a batch from comfyui/inputs/input.example.yaml
 stop-pod               # stop + terminate the pod when done
-comfy -p <pod-name> -i <input1>,<input2>,... # runs all the above in sequence
+runpod-comfy -p <pod-name> -i <input1>,<input2>,... # runs all the above in sequence (with pod)
+comfy -i <input1>,<input2>,... # run batches locally (no pod)
 ```
 
 `comfyui/batch.mjs` picks the ComfyUI URL from the active pod state file first (`runpod/.active-pod.json`, written by `start-pod`) and falls back to `COMFY_SERVER` from `.env`.
