@@ -78,10 +78,10 @@ A list of settings blocks. Each block shares its settings across a `prompts` lis
   size: # optional, base default otherwise
     width: 832
     height: 1216
-  lora-strengths:
-    [1, 0.5] # optional, one entry per LoraLoader node
-    # (workflow order, sets strength_model);
-    # omitted keeps base values; wrong count errors
+  loras: # optional, builds Lora_1..Lora_N in order
+    - name: nice-lora.safetensors
+      strength: 1
+  clip-skip: -2 # optional, overrides the base's CLIPSetLastLayer
   prompts:
     - tries: 4 # optional, default 1; forces random seeds
       prompt: # list of parts, joined in order
@@ -97,7 +97,7 @@ A list of settings blocks. Each block shares its settings across a `prompts` lis
         - beach, waves, storm
 ```
 
-Rules: `seed` is random unless set to a fixed number (a fixed seed is kept only when `tries` is unset or `1` — `tries > 1` always randomizes). Prompt parts are appended in list order to the base workflow's positive prompt; `negative-prompt` parts work the same way on the base negative prompt (found via the sampler's `negative` link, else `NegativeCLIP_Base`). `lora-strengths` sets each `LoraLoader` node's `strength_model` (`strength_clip` untouched); the list must have exactly one entry per LoRA node or the job errors. Per-prompt `tries`/`seed`/`prompt`/`negative-prompt`/`lora-strengths` override the parent. The base workflow's seed is never reused.
+Rules: `seed` is random unless set to a fixed number (a fixed seed is kept only when `tries` is unset or `1` — `tries > 1` always randomizes). Prompt parts are appended in list order to the base workflow's positive prompt; `negative-prompt` parts work the same way on the base negative prompt (found via the sampler's `negative` link, else `NegativeCLIP_Base`). `loras` (a list of `{name, strength}`, minimum one entry) dynamically creates `Lora_1..Lora_N` `LoraLoader` nodes chained between the checkpoint and clip-skip; both `strength_model` and `strength_clip` get the entry's `strength`; omitted → no LoRAs. `clip-skip` (any number) overrides the base workflow's `CLIPSetLastLayer.stop_at_clip_layer`; omitted → base value kept. Per-prompt `tries`/`seed`/`prompt`/`negative-prompt`/`loras`/`clip-skip` override the parent. The base workflow's seed is never reused.
 
 ### Outputs
 

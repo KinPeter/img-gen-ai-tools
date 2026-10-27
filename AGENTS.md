@@ -62,15 +62,16 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 - `comfyui/jobs/comfy.mjs`: `POST /prompt`, poll `GET /history/{id}` until entry appears with `status_str === "success"`.
 - `comfyui/jobs/save.mjs` + `comfyui/utils/paths.mjs`: unsafe `output-folder` (path escape) is ignored with a warning, falls back to `output/`.
 - `comfyui/jobs/convert.mjs`: PNG → JPG quality 90 into `dist/` (mirrors `output/` subfolders).
-- `comfyui/workflows/models.mjs`: per-`base-workflow` model + LoRA URL registry (`WORKFLOW_MODELS`).
 
 ## Input YAML (`comfyui/inputs/`, gitignored except `input.example.yaml`)
 
 - Top-level list of blocks; every block **must** have a `prompts` list. Each entry merges over its parent — per-prompt `tries`/`seed`/`prompt` win.
 - `base-workflow: <name>` loads `comfyui/workflows/<name>.json` (`.json` suffix optional). `steps`/`cfg`/`size`/`filename-prefix` applied only when set.
 - `prompt` must be a list of strings, appended in order to the base positive prompt (`PositiveCLIP_Base` or sampler-linked `CLIPTextEncode`). `tries` must be int >= 1, default 1.
+- `loras` (list of `{name, strength}`, minimum one entry) builds the `Lora_1..Lora_N` `LoraLoader` chain; omitted → no LoRAs. `clip-skip` (any number) overrides `stop_at_clip_layer`.
 - Seed rule: fixed seed kept only when `tries` is unset/`1`; `tries > 1` always randomizes. Otherwise seed is `Math.floor(Math.random() * MAX_SAFE_INTEGER)`.
 - Overrides locate nodes by `class_type` (`KSampler`, `EmptyLatentImage`, `SaveImage`); new base JSONs must keep those node types or overrides silently no-op.
+- Tests never use gitignored files: base-workflow fixtures live in `test/fixtures/workflows/` and are loaded via the `workflowsDir` parameter of `loadWorkflows`.
 
 ## Outputs (all gitignored)
 
