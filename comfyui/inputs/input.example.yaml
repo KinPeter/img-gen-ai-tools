@@ -1,7 +1,7 @@
 # Example input list for: comfy-batch input.example
 # Each item shares its settings across a `prompts` list. Per-prompt
 # `tries`/`seed`/`prompt` override the parent; everything else is shared.
-- base-workflow: juggernaut-base
+- base-workflow: example-base-workflow
   output-folder: rover-city
   filename-prefix: rover
   steps: 2
@@ -32,7 +32,7 @@
         - insects, spiders
         - old houses
 
-- base-workflow: juggernaut-base
+- base-workflow: example-base-workflow
   output-folder: bp-cyberpunk
   filename-prefix: bp-cp
   steps: 1

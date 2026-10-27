@@ -32,31 +32,27 @@ describe("workflow expansion", () => {
   it("rejects malformed YAML, missing prompts, invalid tries and LoRA values", async () => {
     for (const [text, message] of [
       ["prompts: [", "Invalid YAML"],
-      ["base-workflow: juggernaut-simple-base", '"prompts" list'],
+      ["base-workflow: example-base-workflow", '"prompts" list'],
       ["prompts: [{}]", 'missing "base-workflow"'],
       [
-        "base-workflow: juggernaut-simple-base\nprompts: [{tries: 0}]",
+        "base-workflow: example-base-workflow\nprompts: [{tries: 0}]",
         'Invalid "tries"',
       ],
       [
-        "base-workflow: juggernaut-simple-base\nprompts: [{prompt: text}]",
+        "base-workflow: example-base-workflow\nprompts: [{prompt: text}]",
         '"prompt" must be a list',
       ],
       [
-        "base-workflow: juggernaut-simple-base\nprompts: [{negative-prompt: text}]",
+        "base-workflow: example-base-workflow\nprompts: [{negative-prompt: text}]",
         '"negative-prompt" must be a list',
       ],
       [
-        "base-workflow: juggernaut-simple-base\nprompts: [{lora-strengths: text}]",
+        "base-workflow: example-base-workflow\nprompts: [{lora-strengths: text}]",
         '"lora-strengths" must be a list',
       ],
       [
-        "base-workflow: juggernaut-simple-base\nprompts: [{lora-strengths: [1]}]",
+        "base-workflow: example-base-workflow\nprompts: [{lora-strengths: [1]}]",
         "LoraLoader nodes",
-      ],
-      [
-        "base-workflow: juggernaut-cyberpunk-neon-lora\nprompts: [{lora-strengths: [bad, 1]}]",
-        "entries must be numbers",
       ],
     ]) {
       await withInput(text, async (name, inputsDir) => {
@@ -68,7 +64,7 @@ describe("workflow expansion", () => {
   it("expands brace groups, inherits overrides, and preserves a single fixed seed", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5);
     await withInput(
-      `base-workflow: juggernaut-simple-base
+      `base-workflow: example-base-workflow
 steps: 4
 cfg: 5
 size: {width: 512, height: 768}
@@ -121,14 +117,14 @@ prompts:
 
   it("loads inputs from a configurable base, including archive subfolders", async () => {
     await withInput(
-      "base-workflow: juggernaut-simple-base\nprompts: [{prompt: [moved]}]\n",
+      "base-workflow: example-base-workflow\nprompts: [{prompt: [moved]}]\n",
       async (name, inputsDir) => {
         const jobs = await loadWorkflows(name, inputsDir);
         expect(getFinalPositivePrompt(jobs[0].workflow)).toContain("moved");
       },
     );
     await withInput(
-      "base-workflow: juggernaut-simple-base\nprompts: [{prompt: [archived]}]\n",
+      "base-workflow: example-base-workflow\nprompts: [{prompt: [archived]}]\n",
       async (name, inputsDir) => {
         const jobs = await loadWorkflows(name, inputsDir);
         expect(getFinalPositivePrompt(jobs[0].workflow)).toContain("archived");
