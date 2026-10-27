@@ -1,0 +1,66 @@
+{
+  "DummyLoader_Base": {
+    "class_type": "DummyLoader",
+    "inputs": {
+      "ckpt_name": "<dummy-loader-checkpoint-name>.safetensors"
+    }
+  },
+  "EmptyLatentImage": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "height": 1216,
+      "width": 832
+    }
+  },
+  "ClipSkip_Base": {
+    "class_type": "CLIPSetLastLayer",
+    "inputs": {
+      "clip": ["DummyLoader_Base", 1],
+      "stop_at_clip_layer": -2
+    }
+  },
+  "PositiveCLIP_Base": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["ClipSkip_Base", 0],
+      "text": "hyper-realistic, photorealistic"
+    }
+  },
+  "NegativeCLIP_Base": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["ClipSkip_Base", 0],
+      "text": "extra limbs, deformed fingers, bad anatomy"
+    }
+  },
+  "Sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["DummyLoader_Base", 0],
+      "seed": 695823221,
+      "steps": 12,
+      "cfg": 1,
+      "sampler_name": "lcm",
+      "scheduler": "kl_optimal",
+      "positive": ["PositiveCLIP_Base", 0],
+      "negative": ["NegativeCLIP_Base", 0],
+      "latent_image": ["EmptyLatentImage", 0],
+      "denoise": 1
+    }
+  },
+  "VAEDecode_1": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["Sampler", 0],
+      "vae": ["DummyLoader_Base", 2]
+    }
+  },
+  "SaveImage": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["VAEDecode_1", 0],
+      "filename_prefix": "my-new-image"
+    }
+  }
+}

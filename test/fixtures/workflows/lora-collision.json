@@ -1,0 +1,48 @@
+{
+  "CheckpointLoader_Base": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+    }
+  },
+  "Lora_1": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["CheckpointLoader_Base", 0],
+      "clip": ["CheckpointLoader_Base", 1],
+      "lora_name": "existing-lora.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5
+    }
+  },
+  "Sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["Lora_1", 0],
+      "seed": 695823221,
+      "steps": 12,
+      "cfg": 1,
+      "sampler_name": "lcm",
+      "scheduler": "kl_optimal",
+      "positive": ["ClipSkip_Base", 0],
+      "negative": ["ClipSkip_Base", 0],
+      "latent_image": ["EmptyLatentImage", 0],
+      "denoise": 1
+    }
+  },
+  "EmptyLatentImage": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "batch_size": 1,
+      "height": 1216,
+      "width": 832
+    }
+  },
+  "ClipSkip_Base": {
+    "class_type": "CLIPSetLastLayer",
+    "inputs": {
+      "clip": ["Lora_1", 1],
+      "stop_at_clip_layer": -2
+    }
+  }
+}

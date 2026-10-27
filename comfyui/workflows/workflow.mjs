@@ -4,6 +4,7 @@ import { parse } from "yaml";
 
 const PROJECT_ROOT = path.join(import.meta.dirname, "..", "..");
 const DEFAULT_INPUTS_DIR = path.join(PROJECT_ROOT, "comfyui", "inputs");
+const WORKFLOWS_DIR = import.meta.dirname;
 
 function inputPath(name, inputsDir) {
   return path.join(inputsDir, `${name}.yaml`);
@@ -28,7 +29,11 @@ function inputLabel(name, inputsDir) {
 // group with comma-separated options expands to one variant per
 // option, cartesian-producted across all groups in the entry's
 // `prompt` list (negative-prompt is left literal).
-export async function loadWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
+export async function loadWorkflows(
+  name,
+  inputsDir = DEFAULT_INPUTS_DIR,
+  workflowsDir = WORKFLOWS_DIR,
+) {
   const yamlPath = inputPath(name, inputsDir);
   const text = await readFile(yamlPath, "utf8");
   let data;
@@ -60,7 +65,7 @@ export async function loadWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
       ? String(baseName)
       : `${baseName}.json`;
     if (!baseCache.has(fileName)) {
-      const basePath = path.join(import.meta.dirname, fileName);
+      const basePath = path.join(workflowsDir, fileName);
       const baseText = await readFile(basePath, "utf8");
       baseCache.set(fileName, JSON.parse(baseText));
     }
@@ -109,12 +114,47 @@ function expandPrompts(items) {
           `"negative-prompt" must be a list of strings: ${JSON.stringify(effective)}`,
         );
       }
+      validateLoras(effective);
       for (const variant of expandBraceVariants(effective)) {
         expanded.push(variant);
       }
     }
   }
   return expanded;
+}
+
+// The `loras` key (absent = no LoRAs, valid) must be a non-empty list of
+// { name, strength } entries when present. Validated on the effective item
+// so it fails fast, before cloning/tries expansion.
+function validateLoras(effective) {
+  if (effective.loras == null) return;
+  if (!Array.isArray(effective.loras)) {
+    throw new Error(
+      `"loras" must be a list of {name, strength} objects: ${JSON.stringify(effective)}`,
+    );
+  }
+  if (effective.loras.length === 0) {
+    throw new Error(
+      `"loras" must contain at least one entry: ${JSON.stringify(effective)}`,
+    );
+  }
+  for (const lora of effective.loras) {
+    if (typeof lora !== "object" || lora == null || Array.isArray(lora)) {
+      throw new Error(
+        `Each "loras" entry must be a {name, strength} object: ${JSON.stringify(lora)}`,
+      );
+    }
+    if (typeof lora.name !== "string" || lora.name.length === 0) {
+      throw new Error(
+        `"loras[].name" must be a non-empty string: ${JSON.stringify(lora)}`,
+      );
+    }
+    if (typeof lora.strength !== "number" || !Number.isFinite(lora.strength)) {
+      throw new Error(
+        `"loras[].strength" must be a finite number: ${JSON.stringify(lora)}`,
+      );
+    }
+  }
 }
 
 // Expands {a, b} alternations in an entry's `prompt` list. Every brace
@@ -179,10 +219,14 @@ function expandBraceVariants(effective) {
   });
 }
 
-export async function requireWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
+export async function requireWorkflows(
+  name,
+  inputsDir = DEFAULT_INPUTS_DIR,
+  workflowsDir = WORKFLOWS_DIR,
+) {
   let workflows;
   try {
-    workflows = await loadWorkflows(name, inputsDir);
+    workflows = await loadWorkflows(name, inputsDir, workflowsDir);
   } catch (err) {
     console.error(
       `Could not load ${inputLabel(name, inputsDir)}: ${err.message}`,
@@ -218,6 +262,13 @@ export function getFinalNegativePrompt(workflow) {
 function findNode(workflow, classType) {
   for (const node of Object.values(workflow)) {
     if (node?.class_type === classType) return node;
+  }
+  return undefined;
+}
+
+function findNodeLabel(workflow, classType) {
+  for (const [label, node] of Object.entries(workflow)) {
+    if (node?.class_type === classType) return label;
   }
   return undefined;
 }
@@ -288,6 +339,79 @@ function applyOverrides(workflow, item, forceRandomSeed) {
       negativeClip.inputs.text = baseText
         ? `${baseText}, ${parts.join(", ")}`
         : parts.join(", ");
+    }
+  }
+
+  if (item?.loras != null) {
+    applyLoras(workflow, item);
+  }
+}
+
+// Builds a Lora_1..Lora_N LoraLoader chain from item.loras, inserts it right
+// after the checkpoint node, and rewires pre-existing model (slot 0) and
+// clip (slot 1) references from the checkpoint onto the last Lora node. Slot
+// 2 (VAE) references and non-array inputs are left untouched, and the newly
+// created Lora nodes are skipped by the rewire walk to avoid cycles.
+function applyLoras(workflow, item) {
+  const checkpointLabel = findNodeLabel(workflow, "CheckpointLoaderSimple");
+  if (checkpointLabel === undefined) {
+    throw new Error(
+      '"loras" requires a CheckpointLoaderSimple node in the base workflow',
+    );
+  }
+  const loras = item.loras;
+  const labels = loras.map((_, i) => `Lora_${i + 1}`);
+  for (const label of labels) {
+    if (label in workflow) {
+      throw new Error(
+        `"loras" cannot be applied: the base workflow already defines a node labeled "${label}"`,
+      );
+    }
+  }
+
+  const newNodes = {};
+  let prev = checkpointLabel;
+  for (let i = 0; i < loras.length; i++) {
+    const label = labels[i];
+    newNodes[label] = {
+      class_type: "LoraLoader",
+      inputs: {
+        model: [prev, 0],
+        clip: [prev, 1],
+        lora_name: loras[i].name,
+        strength_model: loras[i].strength,
+        strength_clip: loras[i].strength,
+      },
+    };
+    prev = label;
+  }
+
+  // Rebuild the node object with the new Lora labels inserted immediately
+  // after the checkpoint key (cosmetic — the API is order-independent).
+  const originalKeys = Object.keys(workflow);
+  const values = {};
+  for (const key of originalKeys) values[key] = workflow[key];
+  for (const key of originalKeys) delete workflow[key];
+  const cpIndex = originalKeys.indexOf(checkpointLabel);
+  for (let i = 0; i < originalKeys.length; i++) {
+    const key = originalKeys[i];
+    workflow[key] = values[key];
+    if (i === cpIndex) {
+      for (const label of labels) workflow[label] = newNodes[label];
+    }
+  }
+
+  // Rewire pre-existing nodes only (the new Lora labels are not in
+  // originalKeys, so they are naturally skipped).
+  const lastLabel = labels[labels.length - 1];
+  for (const key of originalKeys) {
+    const inputs = values[key]?.inputs;
+    if (!inputs || typeof inputs !== "object") continue;
+    for (const [inputKey, value] of Object.entries(inputs)) {
+      if (!Array.isArray(value) || value.length !== 2) continue;
+      if (value[0] !== checkpointLabel) continue;
+      if (value[1] === 0) inputs[inputKey] = [lastLabel, 0];
+      else if (value[1] === 1) inputs[inputKey] = [lastLabel, 1];
     }
   }
 }

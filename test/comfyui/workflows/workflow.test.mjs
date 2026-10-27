@@ -11,6 +11,17 @@ import {
   requireWorkflows,
 } from "../../../comfyui/workflows/workflow.mjs";
 
+// Tracked non-standard fixture bases (see .tmp/comfy-input-improvement/03).
+// Never use gitignored files for testing; base JSONs are served through the
+// `workflowsDir` injection point instead of comfyui/workflows/.
+const FIXTURES_WORKFLOWS_DIR = path.join(
+  import.meta.dirname,
+  "..",
+  "..",
+  "fixtures",
+  "workflows",
+);
+
 describe("workflow expansion", () => {
   // Every fixture gets its own throwaway temp "inputs" tree (injected into
   // loadWorkflows/requireWorkflows), so tests never touch real
@@ -149,5 +160,181 @@ prompts:
       await expect(requireWorkflows(name, inputsDir)).rejects.toThrow("exit 0");
     });
     expect(exit).toHaveBeenCalledWith(0);
+  });
+
+  it("injects a single LoraLoader and rewires model/clip but not vae", async () => {
+    await withInput(
+      [
+        "base-workflow: example-base-workflow",
+        "loras:",
+        "  - name: nice-lora.safetensors",
+        "    strength: 1",
+        "prompts: [{}]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        expect(wf.Lora_1).toEqual({
+          class_type: "LoraLoader",
+          inputs: {
+            model: ["CheckpointLoader_Base", 0],
+            clip: ["CheckpointLoader_Base", 1],
+            lora_name: "nice-lora.safetensors",
+            strength_model: 1,
+            strength_clip: 1,
+          },
+        });
+        expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_1", 1]);
+        expect(wf.Sampler.inputs.model).toEqual(["Lora_1", 0]);
+        expect(wf.VAEDecode_1.inputs.vae).toEqual(["CheckpointLoader_Base", 2]);
+        const keys = Object.keys(wf);
+        expect(keys[keys.indexOf("CheckpointLoader_Base") + 1]).toBe("Lora_1");
+      },
+    );
+  });
+
+  it("chains three LoraLoaders and rewires consumers to the last one", async () => {
+    await withInput(
+      [
+        "base-workflow: example-base-workflow",
+        "loras:",
+        "  - name: first-lora.safetensors",
+        "    strength: 1",
+        "  - name: second-lora.safetensors",
+        "    strength: 0.3",
+        "  - name: third-lora.safetensors",
+        "    strength: 0.6",
+        "prompts: [{}]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        expect(wf.Lora_1.inputs.model).toEqual(["CheckpointLoader_Base", 0]);
+        expect(wf.Lora_1.inputs.clip).toEqual(["CheckpointLoader_Base", 1]);
+        expect(wf.Lora_2.inputs.model).toEqual(["Lora_1", 0]);
+        expect(wf.Lora_2.inputs.clip).toEqual(["Lora_1", 1]);
+        expect(wf.Lora_3.inputs.model).toEqual(["Lora_2", 0]);
+        expect(wf.Lora_3.inputs.clip).toEqual(["Lora_2", 1]);
+        expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_3", 1]);
+        expect(wf.Sampler.inputs.model).toEqual(["Lora_3", 0]);
+        expect(wf.VAEDecode_1.inputs.vae).toEqual(["CheckpointLoader_Base", 2]);
+        // Labels appear in input order, inserted right after the checkpoint.
+        const keys = Object.keys(wf);
+        const cp = keys.indexOf("CheckpointLoader_Base");
+        expect(keys.slice(cp + 1, cp + 4)).toEqual([
+          "Lora_1",
+          "Lora_2",
+          "Lora_3",
+        ]);
+      },
+    );
+  });
+
+  it("rejects invalid loras", async () => {
+    for (const [text, message] of [
+      [
+        "base-workflow: example-base-workflow\nloras: text\nprompts: [{}]",
+        '"loras" must be a list',
+      ],
+      [
+        "base-workflow: example-base-workflow\nloras: []\nprompts: [{}]",
+        '"loras" must contain at least one',
+      ],
+      [
+        "base-workflow: example-base-workflow\nloras: [42]\nprompts: [{}]",
+        'Each "loras" entry must be a {name, strength} object',
+      ],
+      [
+        "base-workflow: example-base-workflow\nloras: [{strength: 1}]\nprompts: [{}]",
+        '"loras[].name" must be a non-empty string',
+      ],
+      [
+        "base-workflow: example-base-workflow\nloras: [{name: 123, strength: 1}]\nprompts: [{}]",
+        '"loras[].name" must be a non-empty string',
+      ],
+      [
+        'base-workflow: example-base-workflow\nloras: [{name: a.safetensors, strength: "0.5"}]\nprompts: [{}]',
+        '"loras[].strength" must be a finite number',
+      ],
+      [
+        "base-workflow: example-base-workflow\nloras: [{name: a.safetensors, strength: .inf}]\nprompts: [{}]",
+        '"loras[].strength" must be a finite number',
+      ],
+    ]) {
+      await withInput(text, async (name, inputsDir) => {
+        await expect(loadWorkflows(name, inputsDir)).rejects.toThrow(message);
+      });
+    }
+  });
+
+  it("rejects loras when the base workflow has no CheckpointLoaderSimple", async () => {
+    await withInput(
+      [
+        "base-workflow: no-checkpoint",
+        "loras:",
+        "  - name: nice-lora.safetensors",
+        "    strength: 1",
+        "prompts: [{}]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        await expect(
+          loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR),
+        ).rejects.toThrow("requires a CheckpointLoaderSimple node");
+      },
+    );
+  });
+
+  it("rejects loras when the base workflow already defines a Lora label", async () => {
+    await withInput(
+      [
+        "base-workflow: lora-collision",
+        "loras:",
+        "  - name: nice-lora.safetensors",
+        "    strength: 1",
+        "prompts: [{}]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        await expect(
+          loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR),
+        ).rejects.toThrow('already defines a node labeled "Lora_1"');
+      },
+    );
+  });
+
+  it("applies a per-prompt loras override wholesale, without merging", async () => {
+    await withInput(
+      [
+        "base-workflow: example-base-workflow",
+        "loras:",
+        "  - name: parent-a.safetensors",
+        "    strength: 0.5",
+        "  - name: parent-b.safetensors",
+        "    strength: 0.6",
+        "prompts:",
+        "  - prompt: [a]",
+        "    loras:",
+        "      - name: entry.safetensors",
+        "        strength: 0.7",
+        "  - prompt: [b]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        const jobs = await loadWorkflows(name, inputsDir);
+        expect(jobs).toHaveLength(2);
+        // The entry's loras replace the parent's wholesale (no entry-level
+        // merging): a single-node chain with the entry's lora only.
+        expect(jobs[0].workflow.Lora_1.inputs.lora_name).toBe(
+          "entry.safetensors",
+        );
+        expect(jobs[0].workflow.Lora_1.inputs.strength_model).toBe(0.7);
+        expect(jobs[0].workflow.Lora_2).toBeUndefined();
+        expect(jobs[0].workflow.Sampler.inputs.model).toEqual(["Lora_1", 0]);
+        // The other entry keeps the parent's two-lora chain untouched.
+        expect(jobs[1].workflow.Lora_1.inputs.lora_name).toBe(
+          "parent-a.safetensors",
+        );
+        expect(jobs[1].workflow.Lora_2.inputs.lora_name).toBe(
+          "parent-b.safetensors",
+        );
+        expect(jobs[1].workflow.Sampler.inputs.model).toEqual(["Lora_2", 0]);
+      },
+    );
   });
 });
