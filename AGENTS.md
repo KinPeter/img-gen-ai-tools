@@ -26,7 +26,7 @@ npm install
 source ./session.sh   # optional shortcuts: `comfy-batch <name>`, `start-pod`, `stop-pod`, `models <name>`
 ```
 
-`dotenv` values are literal (no variable expansion). `package-lock.json` is gitignored — do not commit it.
+`dotenv` values are literal (no variable expansion). `package-lock.json` is tracked — commit updates alongside dependency changes.
 
 ## Commands
 
@@ -65,7 +65,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 
 ## Input YAML (`comfyui/inputs/`, gitignored except `input.example.yaml`)
 
-- Top-level list of blocks; every block **must** have a `prompts` list. Each entry merges over its parent — per-prompt `tries`/`seed`/`prompt` win.
+- Top-level list of blocks; every block **must** have a `prompts` list. Each entry merges over its parent — per-prompt `tries`/`seed`/`prompt`/`negative-prompt`/`loras`/`clip-skip` win.
 - `base-workflow: <name>` loads `comfyui/workflows/<name>.json` (`.json` suffix optional). `steps`/`cfg`/`size`/`filename-prefix` applied only when set.
 - `prompt` must be a list of strings, appended in order to the base positive prompt (`PositiveCLIP_Base` or sampler-linked `CLIPTextEncode`). `tries` must be int >= 1, default 1.
 - `loras` (list of `{name, strength}`, minimum one entry) builds the `Lora_1..Lora_N` `LoraLoader` chain; omitted → no LoRAs. `clip-skip` (any number) overrides `stop_at_clip_layer`.

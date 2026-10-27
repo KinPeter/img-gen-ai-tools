@@ -51,7 +51,8 @@ export async function main() {
   const jobs = await requireWorkflows(name);
   for (let i = 0; i < jobs.length; i++) {
     console.log(`[${i + 1}/${jobs.length}] Running workflow...`);
-    // console.log(JSON.stringify(jobs[i], null, 2));
+    // Debugging: uncomment this line to see the full workflow
+    // console.log(JSON.stringify(jobs[i].workflow, null, 2));
     const ok = await runJob(jobs[i], { config, logPath, logEntries });
     if (!ok) return false;
   }
