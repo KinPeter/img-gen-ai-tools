@@ -337,4 +337,89 @@ prompts:
       },
     );
   });
+
+  it("overrides stop_at_clip_layer when clip-skip is set", async () => {
+    await withInput(
+      "base-workflow: example-base-workflow\nclip-skip: -1\nprompts: [{}]\n",
+      async (name, inputsDir) => {
+        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+      },
+    );
+  });
+
+  it("keeps the base stop_at_clip_layer when clip-skip is absent", async () => {
+    await withInput(
+      "base-workflow: example-base-workflow\nprompts: [{}]\n",
+      async (name, inputsDir) => {
+        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+      },
+    );
+  });
+
+  it("applies clip-skip: 0 as an override and treats an explicit null as absent", async () => {
+    for (const [clipSkipYaml, expected] of [
+      ["0", 0],
+      ["null", -2],
+    ]) {
+      await withInput(
+        `base-workflow: example-base-workflow\nclip-skip: ${clipSkipYaml}\nprompts: [{}]\n`,
+        async (name, inputsDir) => {
+          const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+          expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(expected);
+        },
+      );
+    }
+  });
+
+  it("applies per-prompt clip-skip: the parent value is inherited, the entry wins", async () => {
+    await withInput(
+      [
+        "base-workflow: example-base-workflow",
+        "clip-skip: -3",
+        "prompts:",
+        "  - prompt: [a]",
+        "    clip-skip: -1",
+        "  - prompt: [b]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        const jobs = await loadWorkflows(name, inputsDir);
+        expect(jobs).toHaveLength(2);
+        // The entry-level clip-skip wins over the parent's.
+        expect(jobs[0].workflow.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(
+          -1,
+        );
+        // The other entry inherits the parent's clip-skip.
+        expect(jobs[1].workflow.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(
+          -3,
+        );
+      },
+    );
+  });
+
+  it("rejects non-number clip-skip values", async () => {
+    for (const text of [
+      'base-workflow: example-base-workflow\nclip-skip: "abc"\nprompts: [{}]',
+      "base-workflow: example-base-workflow\nclip-skip: {a: 1}\nprompts: [{}]",
+      "base-workflow: example-base-workflow\nclip-skip: .inf\nprompts: [{}]",
+    ]) {
+      await withInput(text, async (name, inputsDir) => {
+        await expect(loadWorkflows(name, inputsDir)).rejects.toThrow(
+          '"clip-skip" must be a finite number',
+        );
+      });
+    }
+  });
+
+  it("rejects clip-skip when the base workflow has no CLIPSetLastLayer", async () => {
+    await withInput(
+      "base-workflow: no-clip-skip\nclip-skip: -1\nprompts: [{}]\n",
+      async (name, inputsDir) => {
+        await expect(
+          loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR),
+        ).rejects.toThrow("requires a CLIPSetLastLayer node");
+      },
+    );
+  });
 });

@@ -21,8 +21,9 @@ function inputLabel(name, inputsDir) {
 
 // Reads comfyui/inputs/<name>.yaml and returns one { workflow, input }
 // pair per requested image. Base workflow JSON is loaded from the
-// workflows folder; scalar overrides (steps/cfg/seed/size/filename-prefix)
-// are applied only when set in the input. Prompt parts (a YAML list) are
+// workflows folder; scalar overrides
+// (steps/cfg/seed/size/filename-prefix/clip-skip) are applied only when
+// set in the input. Prompt parts (a YAML list) are
 // appended to the base positive prompt in list order; negative-prompt
 // parts (a YAML list) are appended to the base negative prompt the
 // same way. Prompt strings support {a, b} alternation: each brace
@@ -112,6 +113,15 @@ function expandPrompts(items) {
       ) {
         throw new Error(
           `"negative-prompt" must be a list of strings: ${JSON.stringify(effective)}`,
+        );
+      }
+      if (
+        effective["clip-skip"] != null &&
+        (typeof effective["clip-skip"] !== "number" ||
+          !Number.isFinite(effective["clip-skip"]))
+      ) {
+        throw new Error(
+          `"clip-skip" must be a finite number: ${JSON.stringify(effective)}`,
         );
       }
       validateLoras(effective);
@@ -314,6 +324,17 @@ function applyOverrides(workflow, item, forceRandomSeed) {
 
   if (item?.["filename-prefix"] != null && saveImage) {
     saveImage.inputs.filename_prefix = item["filename-prefix"];
+  }
+
+  if (item?.["clip-skip"] != null) {
+    const clipSkip =
+      findNode(workflow, "CLIPSetLastLayer") ?? workflow.ClipSkip_Base;
+    if (clipSkip == null) {
+      throw new Error(
+        '"clip-skip" requires a CLIPSetLastLayer node in the base workflow',
+      );
+    }
+    clipSkip.inputs.stop_at_clip_layer = item["clip-skip"];
   }
 
   const positiveClip = findPositiveClip(workflow, sampler);
