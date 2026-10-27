@@ -27,8 +27,7 @@ function inputLabel(name, inputsDir) {
 // same way. Prompt strings support {a, b} alternation: each brace
 // group with comma-separated options expands to one variant per
 // option, cartesian-producted across all groups in the entry's
-// `prompt` list (negative-prompt is left literal). lora-strengths (a YAML list) sets each LoraLoader node's
-// strength_model in workflow order; omitted keeps base values.
+// `prompt` list (negative-prompt is left literal).
 export async function loadWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
   const yamlPath = inputPath(name, inputsDir);
   const text = await readFile(yamlPath, "utf8");
@@ -84,8 +83,8 @@ export async function loadWorkflows(name, inputsDir = DEFAULT_INPUTS_DIR) {
 
 // Every top-level item shares its settings across a `prompts` list.
 // Each list entry merges over the parent (per-prompt tries/seed/prompt/
-// negative-prompt/lora-strengths win), so the rest of the pipeline
-// always sees plain effective items.
+// negative-prompt win), so the rest of the pipeline always sees plain
+// effective items.
 function expandPrompts(items) {
   const expanded = [];
   for (const item of items) {
@@ -240,12 +239,6 @@ function findNegativeClip(workflow, sampler) {
   return undefined;
 }
 
-function findLoraLoaders(workflow) {
-  return Object.values(workflow).filter(
-    (node) => node?.class_type === "LoraLoader",
-  );
-}
-
 function applyOverrides(workflow, item, forceRandomSeed) {
   const sampler = findNode(workflow, "KSampler") ?? workflow.Sampler;
   const latent =
@@ -296,30 +289,6 @@ function applyOverrides(workflow, item, forceRandomSeed) {
         ? `${baseText}, ${parts.join(", ")}`
         : parts.join(", ");
     }
-  }
-
-  if (item?.["lora-strengths"] != null) {
-    const strengths = item["lora-strengths"];
-    if (!Array.isArray(strengths)) {
-      throw new Error(
-        `"lora-strengths" must be a list of numbers: ${JSON.stringify(item)}`,
-      );
-    }
-    const loras = findLoraLoaders(workflow);
-    if (strengths.length !== loras.length) {
-      throw new Error(
-        `"lora-strengths" has ${strengths.length} entries but the workflow has ${loras.length} LoraLoader nodes: ${JSON.stringify(item)}`,
-      );
-    }
-    strengths.forEach((s, i) => {
-      const value = Number(s);
-      if (!Number.isFinite(value)) {
-        throw new Error(
-          `"lora-strengths" entries must be numbers: ${JSON.stringify(item)}`,
-        );
-      }
-      loras[i].inputs.strength_model = value;
-    });
   }
 }
 

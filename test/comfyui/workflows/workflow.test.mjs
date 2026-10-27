@@ -29,7 +29,7 @@ describe("workflow expansion", () => {
     }
   }
 
-  it("rejects malformed YAML, missing prompts, invalid tries and LoRA values", async () => {
+  it("rejects malformed YAML, missing prompts and invalid tries", async () => {
     for (const [text, message] of [
       ["prompts: [", "Invalid YAML"],
       ["base-workflow: example-base-workflow", '"prompts" list'],
@@ -45,14 +45,6 @@ describe("workflow expansion", () => {
       [
         "base-workflow: example-base-workflow\nprompts: [{negative-prompt: text}]",
         '"negative-prompt" must be a list',
-      ],
-      [
-        "base-workflow: example-base-workflow\nprompts: [{lora-strengths: text}]",
-        '"lora-strengths" must be a list',
-      ],
-      [
-        "base-workflow: example-base-workflow\nprompts: [{lora-strengths: [1]}]",
-        "LoraLoader nodes",
       ],
     ]) {
       await withInput(text, async (name, inputsDir) => {
