@@ -9,7 +9,7 @@ import {
   getFinalSeed,
   loadWorkflows,
   requireWorkflows,
-} from "../../../comfyui/workflows/workflow.mjs";
+} from "../../../comfyui/workflow-builder/workflow.mjs";
 
 // Tracked non-standard fixture bases (see .tmp/comfy-input-improvement/03).
 // Never use gitignored files for testing; base JSONs are served through the

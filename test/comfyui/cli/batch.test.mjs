@@ -21,7 +21,7 @@ vi.mock("../../../comfyui/jobs/config.mjs", () => ({
 vi.mock("../../../comfyui/utils/args.mjs", () => ({
   requireInputName: vi.fn(() => "test"),
 }));
-vi.mock("../../../comfyui/workflows/workflow.mjs", () => ({
+vi.mock("../../../comfyui/workflow-builder/workflow.mjs", () => ({
   requireWorkflows: vi.fn(async () => mocks.jobs),
 }));
 vi.mock("../../../comfyui/jobs/comfy.mjs", () => ({

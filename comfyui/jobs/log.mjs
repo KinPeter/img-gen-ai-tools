@@ -5,7 +5,7 @@ import {
   getFinalSeed,
   getFinalPositivePrompt,
   getFinalNegativePrompt,
-} from "../workflows/workflow.mjs";
+} from "../workflow-builder/workflow.mjs";
 
 export function formatDuration(ms) {
   const totalSeconds = Math.max(0, Math.round(ms / 1000));

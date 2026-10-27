@@ -1,7 +1,7 @@
 import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { requireWorkflows } from "./workflows/workflow.mjs";
+import { requireWorkflows } from "./workflow-builder/workflow.mjs";
 import { requireConfig } from "./jobs/config.mjs";
 import { requireInputName } from "./utils/args.mjs";
 import { queuePrompt, waitForCompletion } from "./jobs/comfy.mjs";
