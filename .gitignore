@@ -66,3 +66,4 @@ output/
 comfyui/inputs/*
 !comfyui/inputs/input.example.yaml
 runpod/.active-pod.json
+local/
