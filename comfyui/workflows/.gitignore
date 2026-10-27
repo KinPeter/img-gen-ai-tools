@@ -1,2 +1,3 @@
 *.json
 !example-comfy-workflow.json
+!example-base-workflow.json
