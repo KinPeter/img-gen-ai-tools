@@ -1,0 +1,134 @@
+[
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 1216,
+          "width": 832
+        }
+      },
+      "ClipSkip_Base": {
+        "class_type": "CLIPSetLastLayer",
+        "inputs": {
+          "clip": ["CheckpointLoader_Base", 1],
+          "stop_at_clip_layer": -1
+        }
+      },
+      "PositiveCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "masterpiece, best quality, highres, overridden clip-skip"
+        }
+      },
+      "NegativeCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "lowres, bad anatomy, extra limbs"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "seed": 1000000001,
+          "steps": 20,
+          "cfg": 8,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["PositiveCLIP_Base", 0],
+          "negative": ["NegativeCLIP_Base", 0],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "SaveImage": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": ["Sampler", 0],
+          "filename_prefix": "output"
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "full-base",
+      "clip-skip": -1,
+      "prompt": ["overridden clip-skip"]
+    }
+  },
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 1216,
+          "width": 832
+        }
+      },
+      "ClipSkip_Base": {
+        "class_type": "CLIPSetLastLayer",
+        "inputs": {
+          "clip": ["CheckpointLoader_Base", 1],
+          "stop_at_clip_layer": -3
+        }
+      },
+      "PositiveCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "masterpiece, best quality, highres, inherited clip-skip"
+        }
+      },
+      "NegativeCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "lowres, bad anatomy, extra limbs"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "seed": 1000000002,
+          "steps": 20,
+          "cfg": 8,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["PositiveCLIP_Base", 0],
+          "negative": ["NegativeCLIP_Base", 0],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "SaveImage": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": ["Sampler", 0],
+          "filename_prefix": "output"
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "full-base",
+      "clip-skip": -3,
+      "prompt": ["inherited clip-skip"]
+    }
+  }
+]

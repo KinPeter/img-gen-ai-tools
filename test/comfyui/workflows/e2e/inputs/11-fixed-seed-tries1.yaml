@@ -1,0 +1,6 @@
+# e2e-11: Fixed seed with tries=1 (seed should be preserved)
+- base-workflow: full-base
+  seed: 999999999
+  prompts:
+    - prompt:
+        - fixed seed test

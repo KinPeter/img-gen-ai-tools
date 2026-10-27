@@ -1,0 +1,7 @@
+# e2e-27: Steps/cfg override on minimal base
+- base-workflow: minimal-base
+  steps: 25
+  cfg: 9
+  prompts:
+    - prompt:
+        - minimal with overrides

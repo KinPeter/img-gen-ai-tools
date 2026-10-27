@@ -1,0 +1,9 @@
+# e2e-04: Multiple prompt entries under one block (each is a separate workflow)
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - prompt A text
+    - prompt:
+        - prompt B text
+    - prompt:
+        - prompt C text

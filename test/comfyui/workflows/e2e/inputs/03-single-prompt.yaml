@@ -1,0 +1,5 @@
+# e2e-03: Single prompt with one positive text appended
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - beautiful landscape

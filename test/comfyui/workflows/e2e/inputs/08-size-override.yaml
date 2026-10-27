@@ -1,0 +1,8 @@
+# e2e-08: Size override
+- base-workflow: full-base
+  size:
+    width: 1024
+    height: 1024
+  prompts:
+    - prompt:
+        - square image

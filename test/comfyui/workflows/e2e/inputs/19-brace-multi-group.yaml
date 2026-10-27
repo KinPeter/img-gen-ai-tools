@@ -1,0 +1,5 @@
+# e2e-19: Brace expansion - multiple groups (cartesian product)
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - a {red, blue} {ball, cube}

@@ -1,0 +1,20 @@
+# e2e-30: All overrides at once on a single prompt (comprehensive single test)
+- base-workflow: full-base
+  steps: 40
+  cfg: 15
+  size:
+    width: 1152
+    height: 896
+  filename-prefix: comprehensive-test
+  seed: 111222333
+  loras:
+    - name: style.safetensors
+      strength: 0.9
+  clip-skip: -1
+  prompts:
+    - prompt:
+        - masterful work,
+        - stunning detail
+      negative-prompt:
+        - blurry,
+        - low quality

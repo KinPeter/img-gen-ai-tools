@@ -1,0 +1,6 @@
+# e2e-22: Seed random with tries=1
+- base-workflow: full-base
+  seed: random
+  prompts:
+    - prompt:
+        - explicit random seed

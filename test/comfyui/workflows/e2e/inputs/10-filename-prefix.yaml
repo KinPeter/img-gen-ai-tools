@@ -1,0 +1,6 @@
+# e2e-10: Filename prefix override
+- base-workflow: full-base
+  filename-prefix: my-custom-prefix
+  prompts:
+    - prompt:
+        - custom name

@@ -1,0 +1,12 @@
+# e2e-24: Combined: positive + negative + steps + cfg + size
+- base-workflow: full-base
+  steps: 30
+  cfg: 10
+  size:
+    width: 640
+    height: 960
+  prompts:
+    - prompt:
+        - positive text
+      negative-prompt:
+        - negative text

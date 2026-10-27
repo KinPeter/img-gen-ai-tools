@@ -1,0 +1,164 @@
+[
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+        }
+      },
+      "Lora_1": {
+        "class_type": "LoraLoader",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "clip": ["CheckpointLoader_Base", 1],
+          "lora_name": "entry-lora.safetensors",
+          "strength_model": 0.4,
+          "strength_clip": 0.4
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 1216,
+          "width": 832
+        }
+      },
+      "ClipSkip_Base": {
+        "class_type": "CLIPSetLastLayer",
+        "inputs": {
+          "clip": ["Lora_1", 1],
+          "stop_at_clip_layer": -2
+        }
+      },
+      "PositiveCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "masterpiece, best quality, highres, entry with its own lora"
+        }
+      },
+      "NegativeCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "lowres, bad anatomy, extra limbs"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["Lora_1", 0],
+          "seed": 1000000001,
+          "steps": 20,
+          "cfg": 8,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["PositiveCLIP_Base", 0],
+          "negative": ["NegativeCLIP_Base", 0],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "SaveImage": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": ["Sampler", 0],
+          "filename_prefix": "output"
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "full-base",
+      "loras": [
+        {
+          "name": "entry-lora.safetensors",
+          "strength": 0.4
+        }
+      ],
+      "prompt": ["entry with its own lora"]
+    }
+  },
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+        }
+      },
+      "Lora_1": {
+        "class_type": "LoraLoader",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "clip": ["CheckpointLoader_Base", 1],
+          "lora_name": "parent-lora.safetensors",
+          "strength_model": 0.8,
+          "strength_clip": 0.8
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 1216,
+          "width": 832
+        }
+      },
+      "ClipSkip_Base": {
+        "class_type": "CLIPSetLastLayer",
+        "inputs": {
+          "clip": ["Lora_1", 1],
+          "stop_at_clip_layer": -2
+        }
+      },
+      "PositiveCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "masterpiece, best quality, highres, entry inherits parent lora"
+        }
+      },
+      "NegativeCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "lowres, bad anatomy, extra limbs"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["Lora_1", 0],
+          "seed": 1000000002,
+          "steps": 20,
+          "cfg": 8,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["PositiveCLIP_Base", 0],
+          "negative": ["NegativeCLIP_Base", 0],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "SaveImage": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": ["Sampler", 0],
+          "filename_prefix": "output"
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "full-base",
+      "loras": [
+        {
+          "name": "parent-lora.safetensors",
+          "strength": 0.8
+        }
+      ],
+      "prompt": ["entry inherits parent lora"]
+    }
+  }
+]

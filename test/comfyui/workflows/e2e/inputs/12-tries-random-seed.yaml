@@ -1,0 +1,6 @@
+# e2e-12: Seed behavior with tries>1 (should randomize, uses Math.random)
+- base-workflow: full-base
+  tries: 3
+  prompts:
+    - prompt:
+        - random seed test

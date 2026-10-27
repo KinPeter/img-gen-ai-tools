@@ -1,0 +1,12 @@
+# e2e-14: Multiple LoRAs with different strengths
+- base-workflow: full-base
+  loras:
+    - name: first-lora.safetensors
+      strength: 1.0
+    - name: second-lora.safetensors
+      strength: 0.5
+    - name: third-lora.safetensors
+      strength: 0.3
+  prompts:
+    - prompt:
+        - three loras chained

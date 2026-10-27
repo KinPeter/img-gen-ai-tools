@@ -1,0 +1,4 @@
+# e2e-01: No modifications at all — bare minimum input
+- base-workflow: full-base
+  prompts:
+    - {}

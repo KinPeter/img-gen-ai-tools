@@ -1,0 +1,6 @@
+# e2e-16: Clip-skip override
+- base-workflow: full-base
+  clip-skip: -1
+  prompts:
+    - prompt:
+        - clip skip -1

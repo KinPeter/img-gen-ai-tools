@@ -1,0 +1,7 @@
+# e2e-05: Multiple prompt strings concatenated (appended in order)
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - part one,
+        - part two,
+        - part three

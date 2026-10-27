@@ -1,0 +1,13 @@
+# e2e-15: LoRA with per-prompt override (different loras per prompt)
+- base-workflow: full-base
+  loras:
+    - name: parent-lora.safetensors
+      strength: 0.8
+  prompts:
+    - prompt:
+        - entry with its own lora
+      loras:
+        - name: entry-lora.safetensors
+          strength: 0.4
+    - prompt:
+        - entry inherits parent lora

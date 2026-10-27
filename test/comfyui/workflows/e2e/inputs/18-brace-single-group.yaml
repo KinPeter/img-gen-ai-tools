@@ -1,0 +1,5 @@
+# e2e-18: Brace expansion - single group
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - a {red, blue} ball

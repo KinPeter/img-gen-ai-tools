@@ -1,0 +1,9 @@
+# e2e-29: Per-prompt tries (one prompt generates multiple, other doesn't)
+- base-workflow: full-base
+  prompts:
+    - tries: 2
+      prompt:
+        - multi-try prompt
+    - tries: 1
+      prompt:
+        - single-try prompt

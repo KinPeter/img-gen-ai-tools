@@ -1,0 +1,6 @@
+# e2e-17: Clip-skip=0
+- base-workflow: full-base
+  clip-skip: 0
+  prompts:
+    - prompt:
+        - clip skip zero

@@ -1,0 +1,8 @@
+# e2e-13: Single LoRA
+- base-workflow: full-base
+  loras:
+    - name: my-lora.safetensors
+      strength: 0.7
+  prompts:
+    - prompt:
+        - lora applied

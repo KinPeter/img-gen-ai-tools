@@ -1,0 +1,93 @@
+[
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors"
+        }
+      },
+      "Lora_1": {
+        "class_type": "LoraLoader",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "clip": ["CheckpointLoader_Base", 1],
+          "lora_name": "style.safetensors",
+          "strength_model": 0.9,
+          "strength_clip": 0.9
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 896,
+          "width": 1152
+        }
+      },
+      "ClipSkip_Base": {
+        "class_type": "CLIPSetLastLayer",
+        "inputs": {
+          "clip": ["Lora_1", 1],
+          "stop_at_clip_layer": -1
+        }
+      },
+      "PositiveCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "masterpiece, best quality, highres, masterful work,, stunning detail"
+        }
+      },
+      "NegativeCLIP_Base": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "clip": ["ClipSkip_Base", 0],
+          "text": "lowres, bad anatomy, extra limbs, blurry,, low quality"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["Lora_1", 0],
+          "seed": 111222333,
+          "steps": 40,
+          "cfg": 15,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["PositiveCLIP_Base", 0],
+          "negative": ["NegativeCLIP_Base", 0],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "SaveImage": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": ["Sampler", 0],
+          "filename_prefix": "comprehensive-test"
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "full-base",
+      "steps": 40,
+      "cfg": 15,
+      "size": {
+        "width": 1152,
+        "height": 896
+      },
+      "filename-prefix": "comprehensive-test",
+      "seed": 111222333,
+      "loras": [
+        {
+          "name": "style.safetensors",
+          "strength": 0.9
+        }
+      ],
+      "clip-skip": -1,
+      "prompt": ["masterful work,", "stunning detail"],
+      "negative-prompt": ["blurry,", "low quality"]
+    }
+  }
+]

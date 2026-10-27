@@ -1,0 +1,9 @@
+# e2e-28: Per-prompt clip-skip override (parent has clip-skip, entry overrides)
+- base-workflow: full-base
+  clip-skip: -3
+  prompts:
+    - prompt:
+        - overridden clip-skip
+      clip-skip: -1
+    - prompt:
+        - inherited clip-skip

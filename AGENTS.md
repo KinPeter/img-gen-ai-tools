@@ -93,3 +93,22 @@ Lifecycle is strictly linear, never restart/reuse: create → wait `RUNNING` →
 - `logging/build-find-ui.mjs` (`npm run build-find-ui`): injects `LOG_FIND_LAMBDA_URL` from `.env` into `logging/dist/index.html` (gitignored).
 - `logging/deploy-find-ui.mjs` (`npm run deploy-find-ui`): builds then uploads `logging/dist/index.html` via plain FTP (insecure, `basic-ftp` `secure: false` — provider cert is for `*.tarhely.com`, not the FTP hostname, so FTPS fails cert verification) to `LOG_FIND_UI_FTP_FOLDER`, overwriting `index.html`.
 - `logging/temp-scripts/` holds one-off migration helpers (own README); excluded from vitest coverage. Vitest covers `logging/**/*.mjs` otherwise (`vitest.config.mjs`, per-file 90% line threshold).
+
+## ComfyUI workflow building tests
+
+E2E golden-file tests cover the full YAML → workflow JSON pipeline.
+
+- Input YAMLs: `test/comfyui/workflows/e2e/inputs/` (30 test cases).
+- Fixture base workflows: `test/comfyui/workflows/e2e/base-workflows/`.
+- Golden output files: `test/comfyui/workflows/e2e/golden/` (auto-matched by basename).
+- Test file: `test/comfyui/workflows/e2e/workflow-e2e.test.mjs`.
+- Golden regeneration: `node test/comfyui/workflows/e2e/generate-goldens.mjs`.
+
+These tests are **critical regression guards**. Whenever `comfyui/workflows/workflow.mjs` changes (new overrides, node-type logic, seed/tries rules, brace expansion, LoRA chain wiring, clip-skip handling, etc.):
+
+1. **Regenerate golden files**: `node test/comfyui/workflows/e2e/generate-goldens.mjs`
+2. **Run the test suite**: `npm test` (must pass)
+3. **Review golden diffs**: If behavior changed intentionally, commit the new golden files. If not, fix the code.
+4. **Add new input fixtures** for any new or altered branches of logic.
+
+Each golden file corresponds to one YAML input; the test compares `loadWorkflows()` output against the golden JSON, verifying every node, override, and seed.

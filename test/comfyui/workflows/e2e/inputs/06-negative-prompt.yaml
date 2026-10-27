@@ -1,0 +1,8 @@
+# e2e-06: Negative prompt appended
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - nice scene
+      negative-prompt:
+        - ugly artifacts
+        - bad lighting

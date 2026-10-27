@@ -1,0 +1,9 @@
+# e2e-25: Multiple top-level items (different output-folders)
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - item one
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - item two

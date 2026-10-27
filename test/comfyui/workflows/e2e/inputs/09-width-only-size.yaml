@@ -1,0 +1,7 @@
+# e2e-09: Width only size override
+- base-workflow: full-base
+  size:
+    width: 768
+  prompts:
+    - prompt:
+        - wider image

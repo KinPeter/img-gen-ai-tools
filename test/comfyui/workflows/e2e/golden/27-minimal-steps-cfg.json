@@ -1,0 +1,42 @@
+[
+  {
+    "workflow": {
+      "CheckpointLoader_Base": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "<base-model-checkpoint-name>.safetensors",
+          "text": "minimal with overrides"
+        }
+      },
+      "Sampler": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": ["CheckpointLoader_Base", 0],
+          "seed": 1000000001,
+          "steps": 25,
+          "cfg": 9,
+          "sampler_name": "euler",
+          "scheduler": "normal",
+          "positive": ["CheckpointLoader_Base", 1],
+          "negative": ["CheckpointLoader_Base", 1],
+          "latent_image": ["EmptyLatentImage", 0],
+          "denoise": 1
+        }
+      },
+      "EmptyLatentImage": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "batch_size": 1,
+          "height": 512,
+          "width": 512
+        }
+      }
+    },
+    "input": {
+      "base-workflow": "minimal-base",
+      "steps": 25,
+      "cfg": 9,
+      "prompt": ["minimal with overrides"]
+    }
+  }
+]

@@ -1,0 +1,5 @@
+# e2e-26: Minimal base with single prompt (no clip skip, no save image)
+- base-workflow: minimal-base
+  prompts:
+    - prompt:
+        - minimal workflow test

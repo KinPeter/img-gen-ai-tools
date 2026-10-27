@@ -1,0 +1,7 @@
+# e2e-20: Brace expansion with multiple prompt entries
+- base-workflow: full-base
+  prompts:
+    - prompt:
+        - "{red, green} thing"
+    - prompt:
+        - blue thing

@@ -1,0 +1,9 @@
+# e2e-21: Per-prompt seed (fixed)
+- base-workflow: full-base
+  prompts:
+    - seed: 12345678
+      prompt:
+        - seeded prompt
+    - seed: 87654321
+      prompt:
+        - differently seeded

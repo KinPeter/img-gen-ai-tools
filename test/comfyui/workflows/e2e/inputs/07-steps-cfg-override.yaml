@@ -1,0 +1,7 @@
+# e2e-07: Steps and cfg overrides
+- base-workflow: full-base
+  steps: 50
+  cfg: 12.5
+  prompts:
+    - prompt:
+        - overridden steps and cfg

@@ -1,0 +1,12 @@
+# e2e-23: Combined: loras + clip-skip + size
+- base-workflow: full-base
+  loras:
+    - name: style-lora.safetensors
+      strength: 0.6
+  clip-skip: -2
+  size:
+    width: 768
+    height: 1024
+  prompts:
+    - prompt:
+        - all features combined
