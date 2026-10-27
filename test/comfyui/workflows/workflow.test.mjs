@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -20,6 +20,17 @@ const FIXTURES_WORKFLOWS_DIR = path.join(
   "..",
   "fixtures",
   "workflows",
+);
+
+// The tracked base the default loadWorkflows resolves inputs against.
+const EXAMPLE_BASE_WORKFLOW_PATH = path.join(
+  import.meta.dirname,
+  "..",
+  "..",
+  "..",
+  "comfyui",
+  "workflows",
+  "example-base-workflow.json",
 );
 
 describe("workflow expansion", () => {
@@ -116,6 +127,38 @@ prompts:
     expect(jobs[0].workflow.EmptyLatentImage.inputs.width).toBe(832);
     const negativeJob = jobs.find((job) => job.input["negative-prompt"]);
     expect(getFinalNegativePrompt(negativeJob.workflow)).toContain("insects");
+    // Block two exercises the `loras` + `clip-skip` keys end to end.
+    const loraJob = jobs.find(
+      (job) => Array.isArray(job.input.loras) && job.input.loras.length === 2,
+    );
+    expect(loraJob).toBeDefined();
+    expect(loraJob.input.loras).toEqual([
+      { name: "nice-lora.safetensors", strength: 1 },
+      { name: "second-lora.safetensors", strength: 0.3 },
+    ]);
+    const loraWf = loraJob.workflow;
+    expect(loraWf.Lora_1).toEqual({
+      class_type: "LoraLoader",
+      inputs: {
+        model: ["CheckpointLoader_Base", 0],
+        clip: ["CheckpointLoader_Base", 1],
+        lora_name: "nice-lora.safetensors",
+        strength_model: 1,
+        strength_clip: 1,
+      },
+    });
+    expect(loraWf.Lora_2.inputs).toEqual({
+      model: ["Lora_1", 0],
+      clip: ["Lora_1", 1],
+      lora_name: "second-lora.safetensors",
+      strength_model: 0.3,
+      strength_clip: 0.3,
+    });
+    // Chain wiring: Lora_1 -> Lora_2 -> ClipSkip_Base, and the sampler
+    // model comes from the last lora in the chain.
+    expect(loraWf.ClipSkip_Base.inputs.clip).toEqual(["Lora_2", 1]);
+    expect(loraWf.Sampler.inputs.model).toEqual(["Lora_2", 0]);
+    expect(loraWf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
   });
 
   it("loads inputs from a configurable base, including archive subfolders", async () => {
@@ -160,6 +203,21 @@ prompts:
       await expect(requireWorkflows(name, inputsDir)).rejects.toThrow("exit 0");
     });
     expect(exit).toHaveBeenCalledWith(0);
+  });
+
+  it("leaves the base workflow untouched when loras and clip-skip are absent", async () => {
+    // No-LoRA regression: a fixed seed equal to the base's own seed makes
+    // every override a no-op, so the expanded workflow must be deep-equal
+    // to a fresh clone of the base JSON — no nodes added, no references
+    // rewired.
+    const base = JSON.parse(await readFile(EXAMPLE_BASE_WORKFLOW_PATH, "utf8"));
+    await withInput(
+      `base-workflow: example-base-workflow\nseed: ${base.Sampler.inputs.seed}\nprompts: [{}]\n`,
+      async (name, inputsDir) => {
+        const [job] = await loadWorkflows(name, inputsDir);
+        expect(job.workflow).toEqual(structuredClone(base));
+      },
+    );
   });
 
   it("injects a single LoraLoader and rewires model/clip but not vae", async () => {
@@ -285,7 +343,7 @@ prompts:
   it("rejects loras when the base workflow already defines a Lora label", async () => {
     await withInput(
       [
-        "base-workflow: lora-collision",
+        "base-workflow: has-lora-label",
         "loras:",
         "  - name: nice-lora.safetensors",
         "    strength: 1",
@@ -297,6 +355,22 @@ prompts:
         ).rejects.toThrow('already defines a node labeled "Lora_1"');
       },
     );
+  });
+
+  it("ignores the legacy lora-strengths key", async () => {
+    // Decision Q2: the removed legacy key is silently ignored — the input
+    // loads and the resulting workflow is deep-equal to the same input
+    // without the key (fixed seed keeps both runs deterministic).
+    const withJobs = await withInput(
+      "base-workflow: example-base-workflow\nseed: 123\nlora-strengths: [1]\nprompts: [{}]\n",
+      async (name, inputsDir) => loadWorkflows(name, inputsDir),
+    );
+    const withoutJobs = await withInput(
+      "base-workflow: example-base-workflow\nseed: 123\nprompts: [{}]\n",
+      async (name, inputsDir) => loadWorkflows(name, inputsDir),
+    );
+    expect(withJobs[0].workflow).toEqual(withoutJobs[0].workflow);
+    expect(withJobs[0].workflow.Lora_1).toBeUndefined();
   });
 
   it("applies a per-prompt loras override wholesale, without merging", async () => {
@@ -334,6 +408,48 @@ prompts:
           "parent-b.safetensors",
         );
         expect(jobs[1].workflow.Sampler.inputs.model).toEqual(["Lora_2", 0]);
+      },
+    );
+  });
+
+  it("gives every tries clone its own identical, independently wired lora chain", async () => {
+    await withInput(
+      [
+        "base-workflow: example-base-workflow",
+        "tries: 2",
+        "loras:",
+        "  - name: nice-lora.safetensors",
+        "    strength: 0.8",
+        "prompts: [{}]",
+      ].join("\n"),
+      async (name, inputsDir) => {
+        const jobs = await loadWorkflows(name, inputsDir);
+        expect(jobs).toHaveLength(2);
+        const [a, b] = jobs.map((job) => job.workflow);
+        // Both clones carry the same, correctly wired chain...
+        for (const wf of [a, b]) {
+          expect(wf.Lora_1).toEqual({
+            class_type: "LoraLoader",
+            inputs: {
+              model: ["CheckpointLoader_Base", 0],
+              clip: ["CheckpointLoader_Base", 1],
+              lora_name: "nice-lora.safetensors",
+              strength_model: 0.8,
+              strength_clip: 0.8,
+            },
+          });
+          expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_1", 1]);
+          expect(wf.Sampler.inputs.model).toEqual(["Lora_1", 0]);
+          expect(wf.VAEDecode_1.inputs.vae).toEqual([
+            "CheckpointLoader_Base",
+            2,
+          ]);
+        }
+        // ...but built independently: no node objects are shared between
+        // the clones.
+        for (const label of Object.keys(a)) {
+          expect(a[label]).not.toBe(b[label]);
+        }
       },
     );
   });
