@@ -10,7 +10,7 @@
  *
  * NOTE: These are happy-path tests only. Error/validation paths for invalid
  * inputs (bad YAML, missing fields, invalid tries/loras values) are covered
- * by the unit tests in `test/comfyui/workflows/workflow.test.mjs`.
+ * by the unit tests in `test/comfyui/workflow-builder/workflow.test.mjs`.
  *
  * See AGENTS.md → "ComfyUI workflow building tests" for guidance on keeping
  * these tests updated when workflow-building logic changes.
@@ -19,7 +19,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, test } from "vitest";
-import { loadWorkflows } from "../../../../comfyui/workflow-builder/workflow.mjs";
+import { loadWorkflows } from "../../../comfyui/workflow-builder/workflow.mjs";
 
 const FIXTURES_BASE = path.join(import.meta.dirname, "base-workflows");
 const INPUTS_DIR = path.join(import.meta.dirname, "inputs");

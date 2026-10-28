@@ -9,7 +9,7 @@
 
 import { readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { loadWorkflows } from "../../../../comfyui/workflow-builder/workflow.mjs";
+import { loadWorkflows } from "../../../comfyui/workflow-builder/workflow.mjs";
 
 const FIXTURES_BASE = path.join(import.meta.dirname, "base-workflows");
 const INPUTS_DIR = path.join(import.meta.dirname, "inputs");

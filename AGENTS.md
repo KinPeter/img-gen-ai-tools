@@ -58,7 +58,7 @@ ComfyUI server is resolved in `comfyui/jobs/config.mjs`: `runpod/.active-pod.jso
 
 `requireConfig -> requireInputName -> requireWorkflows ->` per job `queuePrompt -> waitForCompletion -> saveOutputs -> addToLog -> convertOutputs`. Failure in any job logs and `process.exit(1)`; log file `output/logs/<input>_<run-ts>.json` is created empty up front and appended live (subfolder inputs keep their relative subfolder, e.g. `output/logs/archive/<input>_<run-ts>.json`).
 
-- `comfyui/workflows/workflow.mjs`: YAML parsing + base-workflow overrides. Images fetched via `GET /view` only — never assumes server disk access.
+- `comfyui/workflow-builder/workflow.mjs`: YAML parsing + base-workflow overrides. Images fetched via `GET /view` only — never assumes server disk access.
 - `comfyui/jobs/comfy.mjs`: `POST /prompt`, poll `GET /history/{id}` until entry appears with `status_str === "success"`.
 - `comfyui/jobs/save.mjs` + `comfyui/utils/paths.mjs`: unsafe `output-folder` (path escape) is ignored with a warning, falls back to `output/`.
 - `comfyui/jobs/convert.mjs`: PNG → JPG quality 90 into `dist/` (mirrors `output/` subfolders).
@@ -96,19 +96,37 @@ Lifecycle is strictly linear, never restart/reuse: create → wait `RUNNING` →
 
 ## ComfyUI workflow building tests
 
+### E2E golden-file tests (`test/comfyui/workflows/`)
+
 E2E golden-file tests cover the full YAML → workflow JSON pipeline.
 
-- Input YAMLs: `test/comfyui/workflows/e2e/inputs/` (30 test cases).
-- Fixture base workflows: `test/comfyui/workflows/e2e/base-workflows/`.
-- Golden output files: `test/comfyui/workflows/e2e/golden/` (auto-matched by basename).
-- Test file: `test/comfyui/workflows/e2e/workflow-e2e.test.mjs`.
-- Golden regeneration: `node test/comfyui/workflows/e2e/generate-goldens.mjs`.
+- Input YAMLs: `test/comfyui/workflows/inputs/` (30 test cases).
+- Fixture base workflows: `test/comfyui/workflows/base-workflows/`.
+- Golden output files: `test/comfyui/workflows/golden/` (auto-matched by basename).
+- Test file: `test/comfyui/workflows/workflow-e2e.test.mjs`.
+- Golden regeneration: `node test/comfyui/workflows/generate-goldens.mjs`.
 
-These tests are **critical regression guards**. Whenever `comfyui/workflows/workflow.mjs` changes (new overrides, node-type logic, seed/tries rules, brace expansion, LoRA chain wiring, clip-skip handling, etc.):
+These tests are **critical regression guards**. Whenever `comfyui/workflow-builder/workflow.mjs` changes (new overrides, node-type logic, seed/tries rules, brace expansion, LoRA chain wiring, clip-skip handling, etc.):
 
-1. **Regenerate golden files**: `node test/comfyui/workflows/e2e/generate-goldens.mjs`
+1. **Regenerate golden files**: `node test/comfyui/workflows/generate-goldens.mjs`
 2. **Run the test suite**: `npm test` (must pass)
 3. **Review golden diffs**: If behavior changed intentionally, commit the new golden files. If not, fix the code.
 4. **Add new input fixtures** for any new or altered branches of logic.
 
 Each golden file corresponds to one YAML input; the test compares `loadWorkflows()` output against the golden JSON, verifying every node, override, and seed.
+
+### Unit tests (`test/comfyui/workflow-builder/`)
+
+Unit tests cover individual modules in `comfyui/workflow-builder/`. The directory mirrors the source code structure:
+
+| Source file                               | Test file                                           | Coverage                                                                                     |
+| ----------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `comfyui/workflow-builder/workflow.mjs`   | `test/comfyui/workflow-builder/workflow.test.mjs`   | Full workflow expansion, brace groups, LoRA chain, clip-skip, validation errors, empty input |
+| `comfyui/workflow-builder/clip.mjs`       | `test/comfyui/workflow-builder/clip.test.mjs`       | findClipSourceLabel, applyClipSkipOverride, rewireClipsTo, createClipSkipNode                |
+| `comfyui/workflow-builder/utils.mjs`      | `test/comfyui/workflow-builder/utils.test.mjs`      | findNodeByClass, findNegativeClip                                                            |
+| `comfyui/workflow-builder/loras.mjs`      | `test/comfyui/workflow-builder/loras.test.mjs`      | Covered by integration (workflow.test.mjs + e2e golden tests)                                |
+| `comfyui/workflow-builder/overrides.mjs`  | `test/comfyui/workflow-builder/overrides.test.mjs`  | Covered by integration (workflow.test.mjs + e2e golden tests)                                |
+| `comfyui/workflow-builder/prompts.mjs`    | `test/comfyui/workflow-builder/prompts.test.mjs`    | Covered by integration (workflow.test.mjs + e2e golden tests)                                |
+| `comfyui/workflow-builder/validation.mjs` | `test/comfyui/workflow-builder/validation.test.mjs` | Covered by integration (workflow.test.mjs — validation errors)                               |
+
+Modules in the last four rows have no direct unit tests because their logic is fully exercised through the `loadWorkflows()` integration in `workflow.test.mjs` and the golden-file E2E tests.
