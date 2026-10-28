@@ -80,6 +80,8 @@ const DETERMINISTIC_SEEDS = [
   5000000001,
   // test 29: entry0 tries=2 + entry1 tries=1
   6000000001, 6000000002, 6000000003,
+  // test 31: clip-skip create
+  7000000001,
 ];
 
 const _origRandom = Math.random;
@@ -733,5 +735,33 @@ describe("e2e workflow building: YAML input → workflow JSON", () => {
     expect(wf.PositiveCLIP_Base.inputs.text).toContain("stunning detail");
     expect(wf.NegativeCLIP_Base.inputs.text).toContain("blurry");
     expect(wf.NegativeCLIP_Base.inputs.text).toContain("low quality");
+  });
+
+  test("31 clip-skip-create: ClipSkip_Base created on workflow that lacks it", async () => {
+    const workflows = await loadWorkflows(
+      "31-clip-skip-create",
+      INPUTS_DIR,
+      FIXTURES_BASE,
+    );
+    const golden = JSON.parse(
+      await readFile(path.join(GOLDEN_DIR, "31-clip-skip-create.json"), "utf8"),
+    );
+
+    expect(workflows).toEqual(golden);
+    expect(workflows).toHaveLength(1);
+    const wf = workflows[0].workflow;
+    // ClipSkip_Base should be created and inserted after the checkpoint
+    expect(wf.ClipSkip_Base).toBeDefined();
+    expect(wf.ClipSkip_Base.class_type).toBe("CLIPSetLastLayer");
+    expect(wf.ClipSkip_Base.inputs.clip).toEqual(["CheckpointLoader_Base", 1]);
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+    // Positive/negative clips should be rewired to point to ClipSkip_Base
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    // PositiveCLIP_Base should have the prompt appended
+    expect(wf.PositiveCLIP_Base.inputs.text).toContain(
+      "masterpiece, best quality",
+    );
+    expect(wf.PositiveCLIP_Base.inputs.text).toContain("clip skip created");
   });
 });

@@ -1,0 +1,6 @@
+# e2e-31: Clip-skip forces creation of ClipSkip_Base on a base workflow that lacks it
+- base-workflow: minimal-no-clipskip
+  clip-skip: -2
+  prompts:
+    - prompt:
+        - clip skip created

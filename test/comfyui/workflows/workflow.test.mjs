@@ -154,11 +154,12 @@ prompts:
       strength_model: 0.3,
       strength_clip: 0.3,
     });
-    // Chain wiring: Lora_1 -> Lora_2 -> ClipSkip_Base, and the sampler
-    // model comes from the last lora in the chain.
+    // Base workflow has ClipSkip_Base; LoRA rewires its clip, clip-skip sets value.
     expect(loraWf.ClipSkip_Base.inputs.clip).toEqual(["Lora_2", 1]);
     expect(loraWf.Sampler.inputs.model).toEqual(["Lora_2", 0]);
     expect(loraWf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+    expect(loraWf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(loraWf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
   });
 
   it("loads inputs from a configurable base, including archive subfolders", async () => {
@@ -241,7 +242,11 @@ prompts:
             strength_clip: 1,
           },
         });
+        // ClipSkip_Base exists in the base; no clip-skip override means its
+        // clip reference is rewired by LoRA, but stop_at_clip_layer is unchanged.
+        expect(wf.ClipSkip_Base).toBeDefined();
         expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_1", 1]);
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
         expect(wf.Sampler.inputs.model).toEqual(["Lora_1", 0]);
         expect(wf.VAEDecode_1.inputs.vae).toEqual(["CheckpointLoader_Base", 2]);
         const keys = Object.keys(wf);
@@ -271,6 +276,8 @@ prompts:
         expect(wf.Lora_2.inputs.clip).toEqual(["Lora_1", 1]);
         expect(wf.Lora_3.inputs.model).toEqual(["Lora_2", 0]);
         expect(wf.Lora_3.inputs.clip).toEqual(["Lora_2", 1]);
+        // ClipSkip_Base exists in the base; its clip reference is rewired by LoRA.
+        expect(wf.ClipSkip_Base).toBeDefined();
         expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_3", 1]);
         expect(wf.Sampler.inputs.model).toEqual(["Lora_3", 0]);
         expect(wf.VAEDecode_1.inputs.vae).toEqual(["CheckpointLoader_Base", 2]);
@@ -438,7 +445,10 @@ prompts:
               strength_clip: 0.8,
             },
           });
+          // ClipSkip_Base exists in the base; its clip is rewired by LoRA.
+          expect(wf.ClipSkip_Base).toBeDefined();
           expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_1", 1]);
+          expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
           expect(wf.Sampler.inputs.model).toEqual(["Lora_1", 0]);
           expect(wf.VAEDecode_1.inputs.vae).toEqual([
             "CheckpointLoader_Base",
@@ -456,40 +466,70 @@ prompts:
 
   it("overrides stop_at_clip_layer when clip-skip is set", async () => {
     await withInput(
-      "base-workflow: example-base-workflow\nclip-skip: -1\nprompts: [{}]\n",
+      `base-workflow: clip-skip-base
+clip-skip: -1
+prompts: [{}]
+`,
       async (name, inputsDir) => {
-        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
+        // Override the existing ClipSkip_Base value
         expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+        // Positive/negative clips should still point to ClipSkip_Base
+        expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
       },
     );
   });
 
   it("keeps the base stop_at_clip_layer when clip-skip is absent", async () => {
+    // Uses clip-skip-base fixture: ClipSkip_Base already exists with value -2,
+    // and no clip-skip is set, so the value should be preserved.
     await withInput(
-      "base-workflow: example-base-workflow\nprompts: [{}]\n",
+      `base-workflow: clip-skip-base
+prompts: [{}]
+`,
       async (name, inputsDir) => {
-        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
         expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
       },
     );
   });
 
   it("applies clip-skip: 0 as an override and treats an explicit null as absent", async () => {
-    for (const [clipSkipYaml, expected] of [
-      ["0", 0],
-      ["null", -2],
-    ]) {
-      await withInput(
-        `base-workflow: example-base-workflow\nclip-skip: ${clipSkipYaml}\nprompts: [{}]\n`,
-        async (name, inputsDir) => {
-          const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
-          expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(expected);
-        },
-      );
-    }
+    // clip-skip: 0 overrides the existing ClipSkip_Base node
+    await withInput(
+      `base-workflow: clip-skip-base
+clip-skip: 0
+prompts: [{}]
+`,
+      async (name, inputsDir) => {
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(0);
+      },
+    );
+    // clip-skip: null is treated as absent; the existing ClipSkip_Base
+    // in example-base-workflow should be left untouched.
+    await withInput(
+      `base-workflow: example-base-workflow
+clip-skip: null
+prompts: [{}]
+`,
+      async (name, inputsDir) => {
+        const wf = (await loadWorkflows(name, inputsDir))[0].workflow;
+        expect(wf.ClipSkip_Base).toBeDefined();
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+      },
+    );
   });
 
   it("applies per-prompt clip-skip: the parent value is inherited, the entry wins", async () => {
+    // example-base-workflow already has ClipSkip_Base, so the override path is used.
     await withInput(
       [
         "base-workflow: example-base-workflow",
@@ -528,13 +568,97 @@ prompts:
     }
   });
 
-  it("rejects clip-skip when the base workflow has no CLIPSetLastLayer", async () => {
+  it("creates ClipSkip_Base when the base workflow has no CLIPSetLastLayer", async () => {
     await withInput(
       "base-workflow: no-clip-skip\nclip-skip: -1\nprompts: [{}]\n",
       async (name, inputsDir) => {
-        await expect(
-          loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR),
-        ).rejects.toThrow("requires a CLIPSetLastLayer node");
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
+        // ClipSkip_Base should be created and inserted after the checkpoint.
+        expect(wf.ClipSkip_Base).toBeDefined();
+        expect(wf.ClipSkip_Base.class_type).toBe("CLIPSetLastLayer");
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+        // clip source should be the checkpoint (no loras)
+        expect(wf.ClipSkip_Base.inputs.clip).toEqual([
+          "CheckpointLoader_Base",
+          1,
+        ]);
+        // Positive/negative clips should be rewired to point to ClipSkip_Base
+        expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        // Sampler should still reference Positive/Negative CLIP nodes
+        expect(wf.Sampler.inputs.positive).toEqual(["PositiveCLIP_Base", 0]);
+        expect(wf.Sampler.inputs.negative).toEqual(["NegativeCLIP_Base", 0]);
+        // Key order: ClipSkip_Base should be right after CheckpointLoader_Base
+        const keys = Object.keys(wf);
+        const cpIndex = keys.indexOf("CheckpointLoader_Base");
+        expect(keys[cpIndex + 1]).toBe("ClipSkip_Base");
+      },
+    );
+  });
+
+  it("creates ClipSkip_Base and uses fallback clip lookup when sampler refs are broken", async () => {
+    // Sampler positive/negative point to non-existent nodes, so rewireClipsTo
+    // must fall back to findNodeByClass / PositiveCLIP_Base lookup.
+    await withInput(
+      `base-workflow: no-clip-ref
+clip-skip: -1
+prompts: [{}]
+`,
+      async (name, inputsDir) => {
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
+        expect(wf.ClipSkip_Base).toBeDefined();
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+        // Positive/NegativeCLIP_Base should be rewired via fallback
+        expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        // Sampler refs remain unchanged (broken targets not rewired)
+        expect(wf.Sampler.inputs.positive).toEqual(["NonExistentClip", 0]);
+        expect(wf.Sampler.inputs.negative).toEqual(["NonExistentClipNeg", 0]);
+      },
+    );
+  });
+
+  it("creates ClipSkip_Base with Lora_N clip source when loras + clip-skip are set on a base without ClipSkip_Base", async () => {
+    // Tests the creation path (no existing ClipSkip_Base) with LoRAs:
+    // the new ClipSkip_Base must read its clip from the last LoRA node.
+    await withInput(
+      `base-workflow: no-clip-skip
+loras:
+  - name: style-lora.safetensors
+    strength: 0.8
+  - name: detail-lora.safetensors
+    strength: 0.4
+clip-skip: -2
+prompts: [{}]
+`,
+      async (name, inputsDir) => {
+        const wf = (
+          await loadWorkflows(name, inputsDir, FIXTURES_WORKFLOWS_DIR)
+        )[0].workflow;
+        // ClipSkip_Base should be created and inserted after the checkpoint.
+        expect(wf.ClipSkip_Base).toBeDefined();
+        expect(wf.ClipSkip_Base.class_type).toBe("CLIPSetLastLayer");
+        expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+        // clip source must be the last LoRA (Lora_2) since we have 2 loras
+        expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_2", 1]);
+        // LoRA chain should be present
+        expect(wf.Lora_1.inputs.lora_name).toBe("style-lora.safetensors");
+        expect(wf.Lora_1.inputs.strength_model).toBe(0.8);
+        expect(wf.Lora_2.inputs.lora_name).toBe("detail-lora.safetensors");
+        expect(wf.Lora_2.inputs.strength_model).toBe(0.4);
+        // Sampler model should reference the last LoRA
+        expect(wf.Sampler.inputs.model).toEqual(["Lora_2", 0]);
+        // Positive/negative clips should be rewired to point to ClipSkip_Base
+        expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+        // Key order: ClipSkip_Base should be right after CheckpointLoader_Base
+        const keys = Object.keys(wf);
+        const cpIndex = keys.indexOf("CheckpointLoader_Base");
+        expect(keys[cpIndex + 1]).toBe("ClipSkip_Base");
       },
     );
   });
