@@ -10,6 +10,18 @@ import {
   loadWorkflows,
   requireWorkflows,
 } from "../../../comfyui/workflow-builder/workflow.mjs";
+import {
+  findClipSourceLabel,
+  createClipSkipNode,
+  rewireClipsTo,
+  applyClipSkipOverride,
+} from "../../../comfyui/workflow-builder/clip.mjs";
+import {
+  findNodeLabel,
+  findNode,
+  findNodeByClass,
+  findNegativeClip,
+} from "../../../comfyui/workflow-builder/utils.mjs";
 
 // Tracked non-standard fixture bases (see .tmp/comfy-input-improvement/03).
 // Never use gitignored files for testing; base JSONs are served through the
@@ -661,5 +673,294 @@ prompts: [{}]
         expect(keys[cpIndex + 1]).toBe("ClipSkip_Base");
       },
     );
+  });
+});
+
+describe("clip.mjs unit tests", () => {
+  it("findClipSourceLabel returns checkpoint when no loras", () => {
+    const wf = {
+      CheckpointLoader_Base: {
+        class_type: "CheckpointLoaderSimple",
+        inputs: {},
+      },
+      Sampler: { class_type: "KSampler", inputs: {} },
+    };
+    expect(findClipSourceLabel(wf, [], "CheckpointLoader_Base")).toBe(
+      "CheckpointLoader_Base",
+    );
+    expect(findClipSourceLabel(wf, undefined, "CheckpointLoader_Base")).toBe(
+      "CheckpointLoader_Base",
+    );
+    expect(findClipSourceLabel(wf, null, "CheckpointLoader_Base")).toBe(
+      "CheckpointLoader_Base",
+    );
+  });
+
+  it("findClipSourceLabel returns Lora_N when loras exist", () => {
+    const wf = {};
+    const loras1 = [{ name: "a.safetensors", strength: 0.5 }];
+    expect(findClipSourceLabel(wf, loras1, "CheckpointLoader_Base")).toBe(
+      "Lora_1",
+    );
+    const loras2 = [
+      { name: "a.safetensors", strength: 0.5 },
+      { name: "b.safetensors", strength: 0.3 },
+    ];
+    expect(findClipSourceLabel(wf, loras2, "CheckpointLoader_Base")).toBe(
+      "Lora_2",
+    );
+    const loras3 = [
+      { name: "a.safetensors", strength: 0.5 },
+      { name: "b.safetensors", strength: 0.3 },
+      { name: "c.safetensors", strength: 0.7 },
+    ];
+    expect(findClipSourceLabel(wf, loras3, "CheckpointLoader_Base")).toBe(
+      "Lora_3",
+    );
+  });
+
+  it("applyClipSkipOverride creates ClipSkip_Base and rewires clips when no CLIPSetLastLayer", async () => {
+    const wf = JSON.parse(
+      await readFile(
+        path.join(FIXTURES_WORKFLOWS_DIR, "no-clip-skip.json"),
+        "utf8",
+      ),
+    );
+    const checkpointLabel = findNodeLabel(wf, "CheckpointLoaderSimple");
+    const sampler = findNode(wf, "KSampler") ?? wf.Sampler;
+    applyClipSkipOverride(wf, -1, undefined, checkpointLabel, sampler);
+    expect(wf.ClipSkip_Base).toBeDefined();
+    expect(wf.ClipSkip_Base.class_type).toBe("CLIPSetLastLayer");
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+    expect(wf.ClipSkip_Base.inputs.clip).toEqual(["CheckpointLoader_Base", 1]);
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    // Key order: ClipSkip_Base right after CheckpointLoader_Base
+    const keys = Object.keys(wf);
+    const cpIndex = keys.indexOf("CheckpointLoader_Base");
+    expect(keys[cpIndex + 1]).toBe("ClipSkip_Base");
+  });
+
+  it("applyClipSkipOverride overrides existing ClipSkip_Base value", async () => {
+    const wf = JSON.parse(
+      await readFile(
+        path.join(FIXTURES_WORKFLOWS_DIR, "clip-skip-base.json"),
+        "utf8",
+      ),
+    );
+    const checkpointLabel = findNodeLabel(wf, "CheckpointLoaderSimple");
+    const sampler = findNode(wf, "KSampler") ?? wf.Sampler;
+    // Before override, value is -2
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+    applyClipSkipOverride(wf, -1, undefined, checkpointLabel, sampler);
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-1);
+    // Clips still point to ClipSkip_Base
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("applyClipSkipOverride uses Lora_N as clip source when loras are present", async () => {
+    const wf = JSON.parse(
+      await readFile(
+        path.join(FIXTURES_WORKFLOWS_DIR, "no-clip-skip.json"),
+        "utf8",
+      ),
+    );
+    // Simulate LoRAs already applied by adding Lora_1 and Lora_2
+    wf.Lora_1 = {
+      class_type: "LoraLoader",
+      inputs: {
+        model: ["CheckpointLoader_Base", 0],
+        clip: ["CheckpointLoader_Base", 1],
+        lora_name: "a.safetensors",
+        strength_model: 1,
+        strength_clip: 1,
+      },
+    };
+    wf.Lora_2 = {
+      class_type: "LoraLoader",
+      inputs: {
+        model: ["Lora_1", 0],
+        clip: ["Lora_1", 1],
+        lora_name: "b.safetensors",
+        strength_model: 0.5,
+        strength_clip: 0.5,
+      },
+    };
+    // Rewire Sampler to use Lora_2 (simulating what applyLoras does)
+    wf.Sampler.inputs.model = ["Lora_2", 0];
+    // Add a fake key order with Lora nodes in correct positions
+    const keys = Object.keys(wf);
+    const values = {};
+    for (const k of keys) values[k] = wf[k];
+    for (const k of keys) delete wf[k];
+    for (let i = 0; i < keys.length; i++) {
+      wf[keys[i]] = values[keys[i]];
+      if (keys[i] === "CheckpointLoader_Base") {
+        wf.Lora_1 = values.Lora_1;
+        wf.Lora_2 = values.Lora_2;
+      }
+    }
+    const checkpointLabel = findNodeLabel(wf, "CheckpointLoaderSimple");
+    const sampler = findNode(wf, "KSampler") ?? wf.Sampler;
+    const loras = [
+      { name: "a.safetensors", strength: 1 },
+      { name: "b.safetensors", strength: 0.5 },
+    ];
+    applyClipSkipOverride(wf, -2, loras, checkpointLabel, sampler);
+    expect(wf.ClipSkip_Base).toBeDefined();
+    expect(wf.ClipSkip_Base.inputs.clip).toEqual(["Lora_2", 1]);
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+    // Positive/negative clips rewired to ClipSkip_Base
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("rewireClipsTo uses sampler refs when valid", () => {
+    const wf = {
+      Sampler: {
+        class_type: "KSampler",
+        inputs: {
+          positive: ["PositiveCLIP_Base", 0],
+          negative: ["NegativeCLIP_Base", 0],
+        },
+      },
+      PositiveCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["Original", 0], text: "hello" },
+      },
+      NegativeCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["Original", 0], text: "bye" },
+      },
+    };
+    rewireClipsTo(wf, "ClipSkip_Base", wf.Sampler);
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("rewireClipsTo falls back to CLIPTextEncode lookup when sampler refs are broken", () => {
+    const wf = {
+      Sampler: {
+        class_type: "KSampler",
+        inputs: {
+          positive: ["NonExistent", 0],
+          negative: ["AlsoNonExistent", 0],
+        },
+      },
+      PositiveCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "hello" },
+      },
+      NegativeCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "bye" },
+      },
+    };
+    rewireClipsTo(wf, "ClipSkip_Base", wf.Sampler);
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("rewireClipsTo uses NegativeCLIP_Base fallback when sampler negative ref is broken", () => {
+    const wf = {
+      Sampler: {
+        class_type: "KSampler",
+        inputs: {
+          positive: ["PositiveCLIP_Base", 0],
+          negative: ["NonExistentNeg", 0],
+        },
+      },
+      PositiveCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "hello" },
+      },
+      NegativeCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "bye" },
+      },
+    };
+    rewireClipsTo(wf, "ClipSkip_Base", wf.Sampler);
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegativeCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("createClipSkipNode inserts after checkpoint and sets clip input correctly", () => {
+    const wf = {
+      CheckpointLoader_Base: {
+        class_type: "CheckpointLoaderSimple",
+        inputs: {},
+      },
+      EmptyLatentImage: { class_type: "EmptyLatentImage", inputs: {} },
+      Sampler: { class_type: "KSampler", inputs: {} },
+    };
+    createClipSkipNode(
+      wf,
+      -2,
+      "CheckpointLoader_Base",
+      "CheckpointLoader_Base",
+    );
+    expect(wf.ClipSkip_Base).toBeDefined();
+    expect(wf.ClipSkip_Base.class_type).toBe("CLIPSetLastLayer");
+    expect(wf.ClipSkip_Base.inputs.clip).toEqual(["CheckpointLoader_Base", 1]);
+    expect(wf.ClipSkip_Base.inputs.stop_at_clip_layer).toBe(-2);
+    // Check key order
+    const keys = Object.keys(wf);
+    expect(keys[1]).toBe("ClipSkip_Base");
+  });
+
+  it("rewireClipsTo deep-fallback: no NegativeCLIP_Base, finds neg clip via for-loop", () => {
+    // No NegativeCLIP_Base present, sampler neg ref broken → for-loop fallback (clip.mjs lines 75-79)
+    const wf = {
+      Sampler: {
+        class_type: "KSampler",
+        inputs: {
+          positive: ["NonExistentPos", 0],
+          negative: ["NonExistentNeg", 0],
+        },
+      },
+      PositiveCLIP_Base: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "hello" },
+      },
+      // No NegativeCLIP_Base — the for-loop must find the negative clip
+      NegCLIP: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: ["CheckpointLoader_Base", 1], text: "bye" },
+      },
+    };
+    rewireClipsTo(wf, "ClipSkip_Base", wf.Sampler);
+    expect(wf.PositiveCLIP_Base.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+    expect(wf.NegCLIP.inputs.clip).toEqual(["ClipSkip_Base", 0]);
+  });
+
+  it("findNodeByClass returns undefined when class not found", () => {
+    expect(
+      findNodeByClass(
+        { Sampler: { class_type: "KSampler", inputs: {} } },
+        "CLIPTextEncode",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("findNegativeClip falls back to for-loop when no NegativeCLIP_Base", () => {
+    const wf = {
+      Sampler: {
+        class_type: "KSampler",
+        inputs: {
+          positive: ["PosClip", 0],
+          negative: ["NonExistentNeg", 0],
+        },
+      },
+      PosClip: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: [], text: "" },
+      },
+      NegCLIP: {
+        class_type: "CLIPTextEncode",
+        inputs: { clip: [], text: "" },
+      },
+    };
+    expect(findNegativeClip(wf, wf.Sampler)).toBe(wf.NegCLIP);
   });
 });

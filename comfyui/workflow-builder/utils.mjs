@@ -32,3 +32,13 @@ export function findNegativeClip(workflow, sampler) {
 export function getRandomSeed() {
   return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 }
+
+/**
+ * Find a node by class_type and return { label, node } or undefined.
+ */
+export function findNodeByClass(workflow, classType) {
+  for (const [label, node] of Object.entries(workflow)) {
+    if (node?.class_type === classType) return { label, node };
+  }
+  return undefined;
+}
